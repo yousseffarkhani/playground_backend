@@ -6,37 +6,37 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/yousseffarkhani/playground/backend2/store"
+
 	"github.com/gorilla/mux"
 )
 
 const (
 	// Routes
-	PlaygroundsURL = "/playgrounds"
+	PlaygroundsURL        = "/playgrounds"
+	NearestPlaygroundsURL = "/nearestPlaygrounds"
 	// Other
 	JsonContentType    = "application/json"
 	GzipAcceptEncoding = "gzip"
 )
 
 type playgroundServer struct {
-	database PlaygroundStore
+	database  PlaygroundStore
+	apiClient store.GeolocationClient
 	http.Handler
 }
 
 type PlaygroundStore interface {
-	AllPlaygrounds() []Playground
-	Playground(ID int) (Playground, error)
+	AllPlaygrounds() store.Playgrounds
+	Playground(ID int) (store.Playground, error)
 }
 
-type Playground struct {
-	Name      string
-	Long, Lat float64
-}
-
-func New(store PlaygroundStore) *playgroundServer {
+func New(store PlaygroundStore, client store.GeolocationClient) *playgroundServer {
 	svr := new(playgroundServer)
 	svr.database = store
 	router := newRouter(svr)
 	svr.Handler = router
+	svr.apiClient = client
 	return svr
 }
 
@@ -46,7 +46,7 @@ func newRouter(svr *playgroundServer) *mux.Router {
 	router.Handle(PlaygroundsURL, http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
 	router.Handle(PlaygroundsURL+"/", http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
 	router.Handle(PlaygroundsURL+"/{ID}", http.HandlerFunc(svr.getPlayground)).Methods(http.MethodGet)
-	// router.Handle(PlaygroundsURL+"/{ID}", http.HandlerFunc(svr.getPlayground)).Methods(http.MethodPost)
+	router.Handle(NearestPlaygroundsURL, http.HandlerFunc(svr.getNearestPlaygrounds)).Methods(http.MethodGet)
 
 	return router
 }
@@ -75,6 +75,37 @@ func (p *playgroundServer) getPlayground(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func (p *playgroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.Request) {
+	adress, err := extractAdressFromRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	nearestPlaygrounds, err := p.database.AllPlaygrounds().FindNearestPlaygrounds(p.apiClient, adress)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	err = encodeToJson(w, nearestPlaygrounds)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func extractAdressFromRequest(r *http.Request) (string, error) {
+	queryStrings := r.URL.Query()
+	adress, ok := queryStrings["adress"]
+	if !ok {
+		return "", fmt.Errorf("No adress paramater in request, %s", r.URL.String())
+	}
+	if adress[0] == "" {
+		return "", fmt.Errorf("Adress paramater is empty, %s", r.URL.String())
+	}
+	return adress[0], nil
 }
 
 func extractIDFromRequest(r *http.Request) (int, error) {

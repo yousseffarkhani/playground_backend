@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/yousseffarkhani/playground/backend2/geolocationClient"
+
 	"github.com/yousseffarkhani/playground/backend2/store"
 
 	"github.com/yousseffarkhani/playground/backend2/server"
@@ -20,7 +22,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Problem opening %s %v", dbFileName, err)
 	}
-	svr := server.New(database)
+	geolocationClient := &geolocationClient.APIGouvFR{}
+	svr := server.New(database, geolocationClient)
 	fmt.Println("Listening on port", port)
 	http.ListenAndServe(port, svr)
 }

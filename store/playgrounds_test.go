@@ -3,39 +3,43 @@ package store_test
 import (
 	"testing"
 
-	"github.com/yousseffarkhani/playground/backend2/server"
-
 	"github.com/yousseffarkhani/playground/backend2/test"
 
 	"github.com/yousseffarkhani/playground/backend2/store"
 )
 
-type stubClient struct {}
+type stubClient struct{}
 
-func (s stubClient) GetLongAndLat(adress string) (long, lat float64) {
-	long = 2.333333
-	lat = 48.866667
-	return long, lat
+func (s stubClient) GetLongAndLat(adress string) (long, lat float64, err error) {
+	long = 2.372452
+	lat = 48.886835
+	return long, lat, nil
 }
 func TestPlaygrounds(t *testing.T) {
 	t.Run("FindNearestPlaygrounds returns playgrounds from nearest to farthest", func(t *testing.T) {
-		nearestPlayground := server.Playground{
-			Name: "TEP Neuve Saint pierre",
-			Long: 2.36295000,
-			Lat:  48.85351000,
-		}
-		intermediatePlayground := server.Playground{
-			Name: "TEP neuve st paul",
+		// {TEP JARDINS SAINT PAUL 2.36016 48.8532}
+		// Distance : 3,37km Temps : 55 min A pied : 4,3km
+		nearestPlayground := store.Playground{
+			Name: "TEP JARDINS SAINT PAUL",
 			Long: 2.36016000,
 			Lat:  48.85320000,
 		}
-		farthestPlayground := server.Playground{
-			Name: "LYCEE DE LA ROCHEFOUCAULT",
-			Long: 2.30541000,
-			Lat:  48.86020000,
+		// {ETABLISSEMENT FENELON 2.31718 48.87867}
+		// Distance : 4,19km Temps : 59 min A pied : 4,5km
+		intermediatePlayground := store.Playground{
+			Name: "ETABLISSEMENT FENELON",
+			Long: 2.31718,
+			Lat:  48.87867,
+		}
+		// {LYCEE VICTOR DURUY 2.31565 48.8533}
+		// Distance : 5,7km Temps : 1h24 A pied : 6,5km
+		farthestPlayground := store.Playground{
+			Name: "LYCEE VICTOR DURUY",
+			Long: 2.31565,
+			Lat:  48.8533,
 		}
 		playgrounds := store.Playgrounds{intermediatePlayground, farthestPlayground, nearestPlayground}
-		client := stubClient()
+		client := stubClient{}
 
 		want := store.Playgrounds{
 			nearestPlayground,
@@ -43,15 +47,15 @@ func TestPlaygrounds(t *testing.T) {
 			farthestPlayground,
 		}
 
-		got := playgrounds.FindNearestPlaygrounds(client, "42 avenue de Flandre Paris")
+		got, _ := playgrounds.FindNearestPlaygrounds(client, "42 avenue de Flandre Paris")
 
 		test.AssertPlaygrounds(t, got, want)
 	})
 	t.Run("Find returns correct playground", func(t *testing.T) {
-		playground1 := server.Playground{
+		playground1 := store.Playground{
 			Name: "1",
 		}
-		playground2 := server.Playground{
+		playground2 := store.Playground{
 			Name: "2",
 		}
 		playgrounds := store.Playgrounds{playground1, playground2}
@@ -62,10 +66,10 @@ func TestPlaygrounds(t *testing.T) {
 		test.AssertPlayground(t, got, want)
 	})
 	t.Run("Find returns error if playground doesn't exist", func(t *testing.T) {
-		playground1 := server.Playground{
+		playground1 := store.Playground{
 			Name: "1",
 		}
-		playground2 := server.Playground{
+		playground2 := store.Playground{
 			Name: "2",
 		}
 		playgrounds := store.Playgrounds{playground1, playground2}

@@ -1,17 +1,12 @@
 package store
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"sort"
-
-	"github.com/yousseffarkhani/playground/backend2/server"
 )
 
 var (
-	// ErrorNotFoundPlayground = errors.New("Playground doesn't exist")
 	ErrorParsingJson = errors.New("Couldn't parse file into JSON")
 )
 
@@ -40,25 +35,24 @@ func New(file *os.File) (*simplePlaygroundStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("problem initialising db file, %v", err)
 	}
-	var playgrounds []server.Playground
-	err = json.NewDecoder(file).Decode(&playgrounds)
+
+	playgrounds, err := NewPlaygrounds(file)
 	if err != nil {
 		return nil, ErrorParsingJson
 	}
+
+	playgrounds.sortByName()
 	return &simplePlaygroundStore{playgrounds}, nil
 }
 
-func (s *simplePlaygroundStore) AllPlaygrounds() []server.Playground {
-	sort.Slice(s.playgrounds, func(i, j int) bool {
-		return s.playgrounds[i].Name < s.playgrounds[j].Name
-	})
+func (s *simplePlaygroundStore) AllPlaygrounds() Playgrounds {
 	return s.playgrounds
 }
 
-func (s *simplePlaygroundStore) Playground(ID int) (server.Playground, error) {
+func (s *simplePlaygroundStore) Playground(ID int) (Playground, error) {
 	playground, err := s.playgrounds.Find(ID)
 	if err != nil {
-		return server.Playground{}, ErrorNotFoundPlayground
+		return Playground{}, ErrorNotFoundPlayground
 	}
 	return playground, nil
 }
