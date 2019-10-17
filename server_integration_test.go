@@ -1,4 +1,4 @@
-package backend2_test
+package main
 
 import (
 	"net/http/httptest"
@@ -17,10 +17,10 @@ func TestPostPlaygroundAndGet(t *testing.T) {
 		t.Fatalf("Problem opening file, %v", err)
 	}
 	client := geolocationClient.APIGouvFR{}
-	svr := server.New(database, client)
+	svr := server.New(database, client, nil)
 
 	t.Run("Get all playgrounds SORTED by name", func(t *testing.T) {
-		req := test.NewGetRequest(t, server.PlaygroundsURL)
+		req := test.NewGetRequest(t, server.APIPlaygrounds)
 		res := httptest.NewRecorder()
 
 		svr.ServeHTTP(res, req)
@@ -58,7 +58,7 @@ func TestPostPlaygroundAndGet(t *testing.T) {
 	t.Run("Get playground", func(t *testing.T) {})
 	t.Run("Returns bad request if playground already exists", func(t *testing.T) {})
 	t.Run("Get all playgrounds returns playgrounds ordered by proximity", func(t *testing.T) {
-		req := test.NewGetRequest(t, server.NearestPlaygroundsURL+"?adress=42 avenue de Flandre Paris")
+		req := test.NewGetRequest(t, server.APINearestPlaygrounds+"?adress=42 avenue de Flandre Paris")
 		res := httptest.NewRecorder()
 
 		svr.ServeHTTP(res, req)

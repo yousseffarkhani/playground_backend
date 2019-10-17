@@ -1,0 +1,120 @@
+# Description
+Playground est une application permettant de trouver le terrain de sport le plus proche de chez soi.
+La partie back-end va se charger de stocker les terrains et de les envoyer au format JSON.
+
+# Objectifs de ce projet :
+- Améliorer mes compétences en :
+    - Golang
+    - Design d'application
+    - TDD
+    - Réaliser le déploiement d'un site en HTTPS avec un nom de domaine acheté
+    - Mettre en oeuvre les connaissances apprises en NodeJS, docker, HTML et CSS.
+    - Réaliser un site utile à terme :-)
+# Architecture
+## Front-end
+Simple fichier HTML + JS
+## Back-end
+La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
+
+# Fonctionnalités (par ordre de priorité)
+- Afficher l'ensemble des terrains de basket parisien
+    - Back-end :
+        1. Récupérer le path vers le fichier JSON  contenant les terrains et le parser
+        1. Enregistrer les terrains dans une BDD
+        1. Créer un webserver écoutant les requêtes Get à l'adresse "/terrains"
+        1. Envoyer la liste des terrains triés par nom à travers une API sous format JSON
+            > Faire attention aux HTTP status codes, Content-Type, méthodes HTTP utilisées, Accept-Encoding
+
+    - Front-end :
+        1. Mettre en place un static file server
+        1. Interroger l'API et parser la réponse contenant les terrains
+        1. Afficher la liste des terrains
+- Afficher le détail d'un terrain
+    - Back-end :
+    > Pré-requis :
+    Les terrains sont stockés dans une BDD
+
+    1. Ecouter les requetes à "/api/playgrounds/{ID}"
+    1. Récupérer l'ID du terrain depuis l'url de la requête
+    1. Interroger la BDD pour retourner le terrain
+    1. Envoyer le terrain à travers une API sous format JSON
+        > Faire attention aux HTTP status codes, Content-Type, méthodes HTTP utilisées, Accept-Encoding
+- Renvoyer les terrains par ordre de proximité pour une adresse donnée
+    1. Récupérer l'adresse
+    2. Récupérer la longitude et lattitude de cette adresse
+    3. Calculer le delta par rapport à tous les playgrounds
+    4. Retourner un tableau de terrains triés par ordre croissant de distance
+
+- Mettre en place la partie PWA de l'application
+    > Utiliser https://appmaker.xyz/pwa-to-apk/ pour publier l'application sur le PlayStore
+    > Utiliser WorkBox pour la gestion du SW
+- Se connecter en OpenID et recevoir un JWT Token
+    > Utiliser Goth pour homogénéiser la gestion des providers
+    > Utiliser github.com/dgrijalva/jwt-go pour mettre en place le JWT
+    > Mettre les ID client et secret key en tant que variables d'environnement
+- Commenter les terrains en étant connecté
+- Ajouter de nouveaux terrains en étant connecté
+    > Si le terrain existe déjà renvoyer un statut badrequest
+    > Vérifier la casse des noms de terrains au moment de les ajouter
+- Disposer d'une fonction de recherche en fonction de certains critères (arrondissement, nom, horaires d'ouverture)
+- En disposant d'un profil modérateur ou administrateur, accepter les demandes d'ajout de nouveaux terrains
+    > Ajouter les rôles dans le JWT
+- Afficher l'itinéraire (à pied, en voiture, le meilleur transport)
+- Pouvoir noter les terrains en étant connecté
+- Mettre en place des évènements et un calendrier pour chaque terrain (pour que des joueurs puisse convenir sur un horaire de RDV)
+- Auto-complétion de l'adresse
+- Créer un compte
+    1. Récupérer et parser le contenu de la POST request
+    2. Créer une entrée dans la BDD
+    3. Retourner le status Accepted
+- Se connecter à son compte et recevoir un JWT Token
+- Modifier son profil
+
+# Back-end
+
+Le webscraper produit un fichier JSON qui sert ensuite à peupler la base de données de l'application.
+Pour cela, les données ont été récupérées depuis plusieurs sources (Open data, web scraping).
+Il est possible de créer un compte permettant de commenter les terrains et d'en soumettre de nouveaux.
+
+# TODO
+
+- Réaliser le front-end
+- Ajouter une fonction permettant de lancer le serveur en https en mode production et sur le port 8080 de localhost en mode dev.
+- Rediriger le traffic HTTP vers HTTPS
+- Automatiser le renouvellement du certificat TLS.
+
+### Web Scraper (NodeJS, librairie : puppeteer/cheerio)
+
+- ~~Data scraper~~
+
+### Application :
+
+- Liste des terrains parisiens
+- Notation des terrains
+- Commentaires
+- Responsive
+- Niveau de jeu des terrains
+- Localisation des terrains (Gmap)
+- Description des terrains
+- Page profil de l'utilisateur
+- Utilisation de JWT pour garder la session active
+- Utilisation de PostgreSQL pour enregistrer les utilisateurs, terrains et commentaires
+- Mise en place de filtres
+- PWA
+- Soumettre de nouveaux terrains et créer une page admin pour les accepter
+- Photos
+- Réconciliation de données
+- Recherche par arrondissement
+- Agenda des terrains et création de communautés
+- Déployer l'application en https
+
+# Améliorations
+- Ajouter de la concurrence
+- Mettre en place un cache
+- Ajouter d'autres jeux de données : https://data.iledefrance.fr/explore/dataset/20170419_res_fichesequipementsactivites/information/?disjunctive.actlib
+
+## Sources de données
+
+- https://www.gralon.net/mairies-france/paris/equipements-sportifs-terrain-de-basket-ball-75056.htm
+- http://www.cartes-2-france.com/activites/750560006/ritz-health-club.php donne accès aux liens https://www.webvilles.net/sports/75056-paris.php
+- https://www.data.gouv.fr/fr/datasets/recensement-des-equipements-sportifs-espaces-et-sites-de-pratiques/

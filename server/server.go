@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -12,11 +13,21 @@ import (
 )
 
 const (
+	// Views
+	URLHome          = "/"
+	URLLogin         = "/login"
+	URLLogout        = "/logout"
+	URLPlayground    = "/playground/{ID}"
+	URLNearest       = "/nearest"
+	URLContact       = "/contact"
+	URLAddPlayground = "/playground"
+
 	// Routes
-	PlaygroundsURL        = "/playgrounds"
-	NearestPlaygroundsURL = "/nearestPlaygrounds"
+	APIPlaygrounds        = "/api/playgrounds"
+	APINearestPlaygrounds = "/api/nearestPlaygrounds"
 	// Other
 	JsonContentType    = "application/json"
+	HtmlContentType    = "text/html; charset=utf-8"
 	GzipAcceptEncoding = "gzip"
 )
 
@@ -24,6 +35,11 @@ type playgroundServer struct {
 	database  PlaygroundStore
 	apiClient store.GeolocationClient
 	http.Handler
+	views map[string]View
+}
+
+type View interface {
+	Render(w io.Writer, r *http.Request, data interface{}) error
 }
 
 type PlaygroundStore interface {
@@ -31,24 +47,46 @@ type PlaygroundStore interface {
 	Playground(ID int) (store.Playground, error)
 }
 
-func New(store PlaygroundStore, client store.GeolocationClient) *playgroundServer {
+func New(store PlaygroundStore, client store.GeolocationClient, views map[string]View) *playgroundServer {
 	svr := new(playgroundServer)
 	svr.database = store
 	router := newRouter(svr)
 	svr.Handler = router
 	svr.apiClient = client
+	svr.views = views
 	return svr
 }
 
 func newRouter(svr *playgroundServer) *mux.Router {
 	router := mux.NewRouter()
 
-	router.Handle(PlaygroundsURL, http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
-	router.Handle(PlaygroundsURL+"/", http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
-	router.Handle(PlaygroundsURL+"/{ID}", http.HandlerFunc(svr.getPlayground)).Methods(http.MethodGet)
-	router.Handle(NearestPlaygroundsURL, http.HandlerFunc(svr.getNearestPlaygrounds)).Methods(http.MethodGet)
+	// Views
+	router.Handle(URLHome, http.HandlerFunc(svr.homeHandler)).Methods(http.MethodGet)
+	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
+	// TODO : Put back when main is in /cmd file
+	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("../static"))))
+
+	// API
+	router.Handle(APIPlaygrounds, http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
+	router.Handle(APIPlaygrounds+"/", http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
+	router.Handle(APIPlaygrounds+"/{ID}", http.HandlerFunc(svr.getPlayground)).Methods(http.MethodGet)
+	router.Handle(APINearestPlaygrounds, http.HandlerFunc(svr.getNearestPlaygrounds)).Methods(http.MethodGet)
 
 	return router
+}
+
+func (p *playgroundServer) homeHandler(w http.ResponseWriter, r *http.Request) {
+	if view, ok := p.views["home"]; ok {
+		w.Header().Set("Content-Type", HtmlContentType)
+		w.Header().Set("Accept-Encoding", GzipAcceptEncoding)
+		w.WriteHeader(http.StatusOK)
+		err := view.Render(w, r, p.database.AllPlaygrounds())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusInternalServerError)
 }
 
 func (p *playgroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Request) {
@@ -118,8 +156,8 @@ func extractIDFromRequest(r *http.Request) (int, error) {
 }
 
 func encodeToJson(w http.ResponseWriter, data interface{}) error {
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", JsonContentType)
 	w.Header().Set("Accept-Encoding", GzipAcceptEncoding)
+	w.WriteHeader(http.StatusOK)
 	return json.NewEncoder(w).Encode(data)
 }

@@ -1,1 +1,3 @@
-tmp
+cmd/tmp
+courts.json
+courts_test.json
