@@ -1,0 +1,119 @@
+{{define "yield"}}
+<!-- Page Heading/Breadcrumbs -->
+<h1 class="mt-4 mb-3">{{.Name}}
+    <small>{{.Arrondissement}}</small>
+</h1>
+
+<!-- Portfolio Item Row -->
+<div class="row">
+
+    <div class="col-md-8">
+        <img class="img-fluid" src="http://placehold.it/750x500" alt="">
+    </div>
+
+    <div class="col-md-4">
+        <h3 class="my-3">Description</h3>
+        <p>.</p>
+        <h3 class="my-3">Détails</h3>
+        <div class="table-responsive">
+            <table class="table table-striped table-sm">
+                <tbody>
+                    <tr>
+                        <td>Adresse</td>
+                        <td>{{.Adress}}</td>
+                    </tr>
+                    <tr>
+                        <td>Dimensions</td>
+                        <td>{{.Dimensions}}m²</td>
+                    </tr>
+                    <tr>
+                        <td>Revêtement</td>
+                        <td>{{.Coating}}</td>
+                    </tr>
+                    <tr>
+                        <td>Couvert</td>
+                        <td>{{if .Open}}non{{else}}oui{{end}}</td>
+                    </tr>
+                    <tr>
+                        <td>Eclairage</td>
+                        <td>{{if .Lightning}}oui{{else}}non{{end}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+</br>
+<!-- /.row -->
+
+
+<!-- Comments Form -->
+<!-- <div class="card my-4">
+    <h5 class="card-header">Leave a Comment:</h5>
+    <div class="card-body">
+        <form>
+            <div class="form-group">
+                <textarea class="form-control" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+</div> -->
+
+<!-- Single Comment -->
+<!-- <div class="media mb-4">
+    <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt="">
+    <div class="media-body">
+        <h5 class="mt-0">Commenter Name</h5>
+        Cras sit amet nibh libero, in gravida nulla. Nulla vel metus scelerisque ante sollicitudin. Cras purus odio,
+        vestibulum in vulputate at, tempus viverra turpis. Fusce condimentum nunc ac nisi vulputate fringilla. Donec
+        lacinia congue felis in faucibus.
+    </div>
+</div> -->
+
+<!-- Comment with nested comments -->
+<!-- <div class="media mb-4">
+    <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt="">
+    <div class="media-body">
+        <h5 class="mt-0">Commenter Name</h5>
+        Cras sit amet nibh libero, in gravida nulla. Nulla vel metus scelerisque ante sollicitudin. Cras purus odio,
+        vestibulum in vulputate at, tempus viverra turpis. Fusce condimentum nunc ac nisi vulputate fringilla. Donec
+        lacinia congue felis in faucibus.
+
+        <div class="media mt-4">
+            <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt="">
+            <div class="media-body">
+                <h5 class="mt-0">Commenter Name</h5>
+                Cras sit amet nibh libero, in gravida nulla. Nulla vel metus scelerisque ante sollicitudin. Cras
+                purus odio,
+                vestibulum in vulputate at, tempus viverra turpis. Fusce condimentum nunc ac nisi vulputate
+                fringilla. Donec
+                lacinia congue felis in faucibus.
+            </div>
+        </div>
+
+        <div class="media mt-4">
+            <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt="">
+            <div class="media-body">
+                <h5 class="mt-0">Commenter Name</h5>
+                Cras sit amet nibh libero, in gravida nulla. Nulla vel metus scelerisque ante sollicitudin. Cras
+                purus odio,
+                vestibulum in vulputate at, tempus viverra turpis. Fusce condimentum nunc ac nisi vulputate
+                fringilla. Donec
+                lacinia congue felis in faucibus.
+            </div>
+        </div>
+
+    </div>
+</div> -->
+<script>
+    const navLinks = document.querySelectorAll(".nav-link")
+    const navLink = document.querySelector("#home")
+
+    navLinks.forEach(navLink => {
+        navLink.classList.remove("active")
+    })
+    navLink.classList.add("active")
+</script>
+{{end}}

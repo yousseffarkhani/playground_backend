@@ -24,6 +24,8 @@ type View struct {
 func Initialize() map[string]server.View {
 	var views = make(map[string]server.View)
 	views["home"] = newView("main", templateDir+"/home.html")
+	views["playgrounds"] = newView("main", templateDir+"/playgrounds.html")
+	views["playground"] = newView("main", templateDir+"/playground.html")
 	return views
 }
 

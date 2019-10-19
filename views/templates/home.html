@@ -1,24 +1,72 @@
 {{define "yield"}}
-<div class="container">
-    <div class="row">
-        {{range .}}
-        <div class="col-lg-4 col-sm-6 portfolio-item">
-            <div class="card h-100">
-                <a href="#"><img class="card-img-top" src="http://placehold.it/700x400" alt=""></a>
-                <div class="card-body">
-                    <h4 class="card-title">
-                        <a href="#">{{.Name}}</a>
-                    </h4>
-                    <p class="card-text">
-                        <ul>
-                            <li>{{.Long}}</li>
-                            <li>{{.Lat}}</li>
-                        </ul>
-                    </p>
-                </div>
-            </div>
-        </div>
-        {{ end }}
+<style>
+    @media screen and (min-width: 700px) {
+        .row {
+            height: 300px;
+        }
+    }
+</style>
+<h1 class="mt-4 mb-3">Trouves le terrain le plus proche de chez toi !
+</h1>
+<div class="input-group">
+    <input type="text" class="form-control" placeholder="Saisis une adresse la plus précise possible" aria-label=""
+        aria-describedby="basic-addon1" name="adress" id="adressInput">
+    <div class="input-group-append">
+        <button class="btn btn-primary mb-2" type="button" id="adressBtn">Rechercher</button>
     </div>
 </div>
+
+<div id="searchNearestResults"></div>
+<br>
+<script>
+    const submitBtn = document.querySelector('#adressBtn')
+    const input = document.querySelector('#adressInput')
+    const results = document.querySelector('#searchNearestResults')
+    submitBtn.addEventListener('click', () => {
+        fetch("/api/nearestPlaygrounds?adress=" + input.value).then(res => res.json()).then(playgrounds => {
+            console.log(playgrounds)
+
+            if (playgrounds.length === 0) {
+                results.innerHTML = `
+            <h2 class="mt-4 mb-3">Il n'y pas de résultats pour cette adresse</h2>
+            `;
+            } else {
+                results.innerHTML = `
+            <h2 class="mt-4 mb-3">Résultats par ordre de proximité</h2>
+<hr>
+            `;
+                playgrounds.map(playground => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                <div class="row">
+    <div class="col-md-7">
+        <a href="#">
+            <img class="img-fluid rounded mb-3 mb-md-0" src="http://placehold.it/700x300" alt="">
+        </a>
+    </div>
+    <div class="col-md-5">
+        <h4>${playground.name}</h4>
+        <p>${playground.adress}</p>
+        <a class="btn btn-primary" href="/playgrounds/${playground.ID}">Plus de détails
+            <span class="glyphicon glyphicon-chevron-right"></span>
+        </a>
+    </div>
+</div>
+<hr>
+                `
+                    results.appendChild(div)
+                })
+            }
+        })
+    })
+</script>
+<script>
+    const navLinks = document.querySelectorAll(".nav-link")
+    const navLink = document.querySelector("#home")
+
+    navLinks.forEach(navLink => {
+        navLink.classList.remove("active")
+    })
+    navLink.classList.add("active")
+</script>
 {{end}}

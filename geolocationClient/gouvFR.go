@@ -38,7 +38,6 @@ func (a APIGouvFR) GetLongAndLat(adress string) (float64, float64, error) {
 
 	long := info.Features[0].Geometry.Coordinates[0]
 	lat := info.Features[0].Geometry.Coordinates[1]
-	fmt.Printf("Adress : %s, Long : %.6f / Lat : %.6f", adress, long, lat)
 
 	return long, lat, nil
 }

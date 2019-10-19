@@ -1,0 +1,65 @@
+{{define "yield"}}
+<!-- <h1 class="mt-4 mb-3">Rechercher un terrain</h1>
+<div class="input-group">
+    <input type="text" class="form-control" placeholder="Saisis un nom ou un arrondissement" aria-label=""
+        aria-describedby="basic-addon1" name="adress" id="adressInput">
+    <div class="input-group-append">
+        <button class="btn btn-primary mb-2" type="button" id="adressBtn">Rechercher</button>
+    </div>
+</div>
+<hr>
+<div id="searchNearestResults">
+    <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Perferendis qui nam ipsa. Voluptatum minus blanditiis
+        dolor exercitationem laudantium natus quia possimus! Eum modi assumenda suscipit facilis beatae facere ex iste.
+    </p>
+</div>
+<br> -->
+
+<div class="row">
+    {{range .}}
+    <div class="col-lg-4 col-sm-6 portfolio-item">
+        <div class="card h-100">
+            <!-- <a href="#"><img class="card-img-top" src="http://placehold.it/700x400" alt=""></a> -->
+            <div class="card-body">
+                <h4 class="card-title">
+                    <a href="/playgrounds/{{.ID}}">{{.Name}}</a>
+                </h4>
+                <p class="card-text">
+                    {{.Adress}}
+                </p>
+                <div class="card">
+                    <div class="card-header" role="tab" id="headingOne">
+                        <h5 class="mb-0">
+                            Détails
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">
+                            Dimensions : {{.Dimensions}} m²
+                        </p>
+                        <p class="card-text">
+                            Revêtement : {{.Coating}}
+                        </p>
+                        <p class="card-text">
+                            Couvert : {{if .Open}}non{{else}}oui{{end}}
+                        </p>
+                        <p class="card-text">
+                            Eclairage : {{if .Lightning}}oui{{else}}non{{end}}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ end }}
+</div>
+<script>
+    const navLinks = document.querySelectorAll(".nav-link")
+    const navLink = document.querySelector("#playgrounds")
+
+    navLinks.forEach(navLink => {
+        navLink.classList.remove("active")
+    })
+    navLink.classList.add("active")
+</script>
+{{end}}

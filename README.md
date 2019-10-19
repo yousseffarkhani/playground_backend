@@ -11,7 +11,7 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
     - Mettre en oeuvre les connaissances apprises en NodeJS, docker, HTML et CSS.
     - Réaliser un site utile à terme :-)
 # Architecture
-## Front-end
+## Front-end
 Simple fichier HTML + JS
 ## Back-end
 La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
@@ -27,8 +27,8 @@ La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
 
     - Front-end :
         1. Mettre en place un static file server
-        1. Interroger l'API et parser la réponse contenant les terrains
-        1. Afficher la liste des terrains
+        1. Mettre en place un layout général et un template spécifique à cette page
+        1. Récupérer et Afficher la liste des terrains
 - Afficher le détail d'un terrain
     - Back-end :
     > Pré-requis :
@@ -45,9 +45,11 @@ La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
     3. Calculer le delta par rapport à tous les playgrounds
     4. Retourner un tableau de terrains triés par ordre croissant de distance
 
-- Mettre en place la partie PWA de l'application
-    > Utiliser https://appmaker.xyz/pwa-to-apk/ pour publier l'application sur le PlayStore
-    > Utiliser WorkBox pour la gestion du SW
+- Mettre en place l'installation de la PWA
+    1. Créer le manifest.json
+    1. Enregister le Service worker dans main.js
+    1. Ajouter le sw.js
+    1. Ajouter la pop-up d'installation
 - Se connecter en OpenID et recevoir un JWT Token
     > Utiliser Goth pour homogénéiser la gestion des providers
     > Utiliser github.com/dgrijalva/jwt-go pour mettre en place le JWT
@@ -69,6 +71,12 @@ La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
     3. Retourner le status Accepted
 - Se connecter à son compte et recevoir un JWT Token
 - Modifier son profil
+- Ajouter des photos des terrains
+- Ajouter l'utilisation du cache pour les static assets et les appels d'API avec la PWA
+    > https://www.julienpradet.fr/fiches-techniques/pwa-intercepter-les-requetes-http-et-les-mettre-en-cache/
+    > https://www.julienpradet.fr/fiches-techniques/pwa-declarer-un-service-worker-et-gerer-son-cycle-de-vie/
+-Publier l'application sur le PlayStore
+    > Utiliser https://appmaker.xyz/pwa-to-apk/ pour publier l'application sur le PlayStore
 
 # Back-end
 

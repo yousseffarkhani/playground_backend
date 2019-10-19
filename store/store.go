@@ -42,6 +42,9 @@ func New(file *os.File) (*simplePlaygroundStore, error) {
 	}
 
 	playgrounds.sortByName()
+	for i, _ := range playgrounds {
+		playgrounds[i].ID = i + 1
+	}
 	return &simplePlaygroundStore{playgrounds}, nil
 }
 

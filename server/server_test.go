@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/yousseffarkhani/playground/backend2/store"
@@ -36,8 +37,8 @@ func (m *mockGeolocationClient) GetLongAndLat(adress string) (long, lat float64,
 }
 
 type mockView struct {
-	Called bool
 	data   interface{}
+	Called bool
 }
 
 func (m *mockView) Render(w io.Writer, r *http.Request, data interface{}) error {
@@ -47,32 +48,78 @@ func (m *mockView) Render(w io.Writer, r *http.Request, data interface{}) error 
 }
 
 func TestViews(t *testing.T) {
-	mockView := &mockView{}
-	str := &mockPlaygroundStore{}
-	views := map[string]server.View{
-		"home": mockView,
+	playground1 := store.Playground{
+		Name: "test1",
+		Long: 2.36016000,
+		Lat:  48.85320000,
 	}
+	playground2 := store.Playground{
+		Name: "test2",
+		Long: 2.31565,
+		Lat:  48.8533}
+	playgrounds := store.Playgrounds{
+		playground1,
+		playground2,
+	}
+	str := &mockPlaygroundStore{playgrounds: playgrounds}
+
+	mockHomeView := &mockView{}
+	mockPlaygroundsView := &mockView{}
+	mockPlaygroundView := &mockView{}
+
+	views := map[string]server.View{
+		"home":        mockHomeView,
+		"playgrounds": mockPlaygroundsView,
+		"playground":  mockPlaygroundView,
+	}
+
 	svr := server.New(str, nil, views)
 
-	t.Run("Get to / returns an HTML Page using home view as a template", func(t *testing.T) {
-		req := test.NewGetRequest(t, "/")
+	type cases struct {
+		data     interface{}
+		template *mockView
+	}
+
+	tests := map[string]cases{
+		server.URLHome:               {nil, mockHomeView},
+		server.URLPlaygrounds:        {playgrounds, mockPlaygroundsView},
+		server.URLPlaygrounds + "/1": {playground1, mockPlaygroundView},
+	}
+
+	for url, tt := range tests {
+		t.Run(fmt.Sprintf("Get to %s returns an HTML Page using correct template and data", url), func(t *testing.T) {
+			req := test.NewGetRequest(t, url)
+			res := httptest.NewRecorder()
+
+			svr.ServeHTTP(res, req)
+
+			assertStatusCode(t, res, http.StatusOK)
+			assertHeader(t, res, "Content-Type", server.HtmlContentType)
+			assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
+
+			if tt.template.Called != true {
+				t.Error("View should be called")
+			}
+			if !reflect.DeepEqual(tt.template.data, tt.data) {
+				t.Errorf("got : %v, want : %v", tt.template.data, tt.data)
+			}
+		})
+	}
+
+	t.Run("All URLs not matching a route REDIRECTS to home page", func(t *testing.T) {
+		req := test.NewGetRequest(t, "/test")
 		res := httptest.NewRecorder()
 
 		svr.ServeHTTP(res, req)
 
-		assertStatusCode(t, res, http.StatusOK)
-		assertHeader(t, res, "Content-Type", server.HtmlContentType)
-		assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
-		got := mockView.Called
-		if got != true {
-			t.Error("This view should be called")
+		url, err := res.Result().Location()
+		if err != nil {
+			t.Fatalf("Problem with response, %s", err)
+		}
+		if url.Path != "/" {
+			t.Errorf("URL should be \"/\", got : %q", url.Path)
 		}
 	})
-
-	// Returns 200
-	// Content-Type HTML
-	// All adresses redirects to home
-	// Loaded correct template with correct data
 	// Contexte ?
 }
 
@@ -149,7 +196,7 @@ func TestGetAPIs(t *testing.T) {
 		})
 		t.Run("Returns 404 if playground doesn't exist", func(t *testing.T) {
 			// Act
-			req := test.NewGetRequest(t, server.APIPlaygrounds+"3")
+			req := test.NewGetRequest(t, server.APIPlaygrounds+"/3")
 			res := httptest.NewRecorder()
 			svr.ServeHTTP(res, req)
 
@@ -192,19 +239,6 @@ func TestGetAPIs(t *testing.T) {
 
 			assertStatusCode(t, res, http.StatusBadRequest)
 		})
-	})
-
-	t.Run("Get request to /test returns 404", func(t *testing.T) {
-		// Arrange
-		svr := server.New(nil, nil, nil)
-
-		// Act
-		req := test.NewGetRequest(t, "/test")
-		res := httptest.NewRecorder()
-		svr.ServeHTTP(res, req)
-
-		// Assert
-		assertStatusCode(t, res, http.StatusNotFound)
 	})
 }
 

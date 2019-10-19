@@ -52,27 +52,15 @@ func TestPlaygrounds(t *testing.T) {
 		test.AssertPlaygrounds(t, got, want)
 	})
 	t.Run("Find returns correct playground", func(t *testing.T) {
-		playground1 := store.Playground{
-			Name: "1",
-		}
-		playground2 := store.Playground{
-			Name: "2",
-		}
-		playgrounds := store.Playgrounds{playground1, playground2}
-		want := playground1
+		playgrounds := setupPlaygrounds()
+		want := playgrounds[0]
 
 		got, _ := playgrounds.Find(1)
 
 		test.AssertPlayground(t, got, want)
 	})
 	t.Run("Find returns error if playground doesn't exist", func(t *testing.T) {
-		playground1 := store.Playground{
-			Name: "1",
-		}
-		playground2 := store.Playground{
-			Name: "2",
-		}
-		playgrounds := store.Playgrounds{playground1, playground2}
+		playgrounds := setupPlaygrounds()
 
 		_, got := playgrounds.Find(0)
 		assertError(t, got, store.ErrorNotFoundPlayground)
@@ -80,4 +68,17 @@ func TestPlaygrounds(t *testing.T) {
 		_, got = playgrounds.Find(3)
 		assertError(t, got, store.ErrorNotFoundPlayground)
 	})
+}
+
+func setupPlaygrounds() store.Playgrounds {
+	playground1 := store.Playground{
+		Name: "1",
+		ID:   1,
+	}
+	playground2 := store.Playground{
+		Name: "2",
+		ID:   2,
+	}
+	playgrounds := store.Playgrounds{playground1, playground2}
+	return playgrounds
 }

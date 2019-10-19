@@ -10,9 +10,16 @@ import (
 )
 
 type Playground struct {
-	Name string  `json:"name"`
-	Long float64 `json:"long"`
-	Lat  float64 `json:"lat"`
+	Name           string  `json:"name"`
+	Long           float64 `json:"long"`
+	Lat            float64 `json:"lat"`
+	Adress         string  `json:"adress"`
+	Arrondissement int     `json:"arrondissement"`
+	Dimensions     float64 `json:"dimensions"`
+	Coating        string  `json:"coating"`
+	Open           bool    `json:"open"`
+	Lightning      bool    `json:"lightning"`
+	ID             int
 }
 
 type Playgrounds []Playground
@@ -29,10 +36,12 @@ func NewPlaygrounds(input io.Reader) (Playgrounds, error) {
 var ErrorNotFoundPlayground = errors.New("Playground doesn't exist")
 
 func (p Playgrounds) Find(ID int) (Playground, error) {
-	if ID > len(p) || ID <= 0 {
-		return Playground{}, ErrorNotFoundPlayground
+	for _, playground := range p {
+		if playground.ID == ID {
+			return playground, nil
+		}
 	}
-	return p[ID-1], nil
+	return Playground{}, ErrorNotFoundPlayground
 }
 func (p Playgrounds) FindNearestPlaygrounds(client GeolocationClient, adress string) (Playgrounds, error) {
 	long, lat, err := client.GetLongAndLat(adress)
@@ -57,9 +66,13 @@ func (p Playgrounds) sortByProximity(long, lat float64) Playgrounds {
 	playgroundsSorted := make(Playgrounds, len(p))
 	copy(playgroundsSorted, p)
 	sort.SliceStable(playgroundsSorted, func(i, j int) bool {
-		distanceFromAdressToI := math.Pow(long-playgroundsSorted[i].Long, 2) + math.Pow(lat-playgroundsSorted[i].Lat, 2)
-		distanceFromAdressToJ := math.Pow(long-playgroundsSorted[j].Long, 2) + math.Pow(lat-playgroundsSorted[j].Lat, 2)
+		distanceFromAdressToI := playgroundsSorted[i].calculateSquaredDistanceFrom(long, lat)
+		distanceFromAdressToJ := playgroundsSorted[j].calculateSquaredDistanceFrom(long, lat)
 		return distanceFromAdressToI < distanceFromAdressToJ
 	})
 	return playgroundsSorted
+}
+
+func (p Playground) calculateSquaredDistanceFrom(long, lat float64) float64 {
+	return math.Pow(long-p.Long, 2) + math.Pow(lat-p.Lat, 2)
 }

@@ -16,7 +16,7 @@ import (
 
 const (
 	port       = ":5000"
-	dbFileName = "playgrounds.db.json"
+	dbFileName = "playgrounds.json"
 )
 
 func main() {

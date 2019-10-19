@@ -16,12 +16,12 @@ func TestStore(t *testing.T) {
 		{"Name": "b"},{"Name": "a"} ]`)
 		defer removeFile()
 		str, _ := store.New(file)
-		playground1 := store.Playground{Name: "b"}
-		playground2 := store.Playground{Name: "a"}
+		playground1 := store.Playground{Name: "a", ID: 1}
+		playground2 := store.Playground{Name: "b", ID: 2}
 		t.Run("Playground returns the right playground", func(t *testing.T) {
 			got, _ := str.Playground(2)
 
-			test.AssertPlayground(t, got, playground1)
+			test.AssertPlayground(t, got, playground2)
 		})
 		t.Run("Playground returns an error if playground doesn't exist", func(t *testing.T) {
 			_, got := str.Playground(0)
@@ -37,11 +37,20 @@ func TestStore(t *testing.T) {
 		t.Run("AllPlaygrounds returns playgrounds SORTED by name", func(t *testing.T) {
 			got := str.AllPlaygrounds()
 			want := store.Playgrounds{
-				playground2,
 				playground1,
+				playground2,
 			}
 
 			test.AssertPlaygrounds(t, got, want)
+		})
+		t.Run("New adds IDs to playgrounds starting with 1 and ordered by name", func(t *testing.T) {
+			playground, _ := str.Playground(1)
+			got := playground.ID
+			want := playground1.ID
+
+			if got != want {
+				t.Errorf("got : %d, want : %d", got, want)
+			}
 		})
 	})
 
@@ -68,6 +77,7 @@ func TestStore(t *testing.T) {
 }
 
 func assertError(t *testing.T, got, want error) {
+	t.Helper()
 	if got != want {
 		t.Errorf("Got %q, want %q", got, want)
 	}

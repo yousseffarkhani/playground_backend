@@ -11,8 +11,7 @@
     <title>Playground</title>
     <link href="/static/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
-    <!-- TODO: Add manifest -->
-    <!-- <link rel="manifest" href="manifest.json"> -->
+    <link rel="manifest" href="/static/manifest.json">
     <link rel="shortcut icon" href="https://freepngimg.com/download/basketball/4-2-basketball-transparent.png"
         type="image/x-icon">
 </head>
@@ -29,20 +28,17 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarResponsive">
                 <ul class="navbar-nav ml-auto">
-                    <li class="nav-item active">
-                        <a class="nav-link" href="/">Home</a>
+                    <li class="nav-item">
+                        <a class="nav-link" id="home" href="/">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="login">Login</a>
+                        <a class="nav-link" id="playgrounds" href="/playgrounds">Terrains</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="contact.html">Contact</a>
+                        <a class="nav-link" id="login" href="login">Login</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="404.html">Error 404</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="playground.html">Single playground</a>
+                        <a class="nav-link" id="contact" href="contact.html">Contact</a>
                     </li>
                     <!-- <li class="nav-item dropdown">
 						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdownBlog" data-toggle="dropdown"
@@ -61,7 +57,9 @@
     </nav>
     <br />
     <!-- Page Content -->
-    {{ template "yield" .}}
+    <div class="container">
+        {{ template "yield" .}}
+    </div>
     <!-- Footer -->
     <footer class="py-5 bg-dark">
         <div class="container">

@@ -12,7 +12,7 @@ import (
 )
 
 func TestPostPlaygroundAndGet(t *testing.T) {
-	database, err := store.NewFromFile("courts_test.json")
+	database, err := store.NewFromFile("playgrounds_test.json")
 	if err != nil {
 		t.Fatalf("Problem opening file, %v", err)
 	}
@@ -35,21 +35,25 @@ func TestPostPlaygroundAndGet(t *testing.T) {
 				Name: "ETABLISSEMENT FENELON",
 				Long: 2.31718,
 				Lat:  48.87867,
+				ID:   1,
 			},
 			store.Playground{
 				Name: "LYCEE CONDORCET",
 				Long: 2.32743,
 				Lat:  48.87484,
+				ID:   2,
 			},
 			store.Playground{
 				Name: "LYCEE VICTOR DURUY",
 				Long: 2.31565,
 				Lat:  48.8533,
+				ID:   3,
 			},
 			store.Playground{
 				Name: "TEP JARDINS SAINT PAUL",
 				Long: 2.36016000,
 				Lat:  48.85320000,
+				ID:   4,
 			},
 		}
 
@@ -74,24 +78,28 @@ func TestPostPlaygroundAndGet(t *testing.T) {
 				Name: "TEP JARDINS SAINT PAUL",
 				Long: 2.36016000,
 				Lat:  48.85320000,
+				ID:   4,
 			},
 			// Distance : 4,1km Temps : 49 min A pied : 3,8km
 			store.Playground{
 				Name: "LYCEE CONDORCET",
 				Long: 2.32743,
 				Lat:  48.87484,
+				ID:   2,
 			},
 			// Distance : 4,19km Temps : 59 min A pied : 4,5km
 			store.Playground{
 				Name: "ETABLISSEMENT FENELON",
 				Long: 2.31718,
 				Lat:  48.87867,
+				ID:   1,
 			},
 			// Distance : 5,7km Temps : 1h24 A pied : 6,5km
 			store.Playground{
 				Name: "LYCEE VICTOR DURUY",
 				Long: 2.31565,
 				Lat:  48.8533,
+				ID:   3,
 			},
 		}
 
