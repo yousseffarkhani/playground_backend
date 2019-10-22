@@ -11,6 +11,7 @@ import (
 
 	"github.com/yousseffarkhani/playground/backend2/store"
 
+	"github.com/yousseffarkhani/playground/backend2/middleware"
 	"github.com/yousseffarkhani/playground/backend2/server"
 )
 
@@ -26,7 +27,8 @@ func main() {
 	}
 	geolocationClient := &geolocationClient.APIGouvFR{}
 	views := views.Initialize()
-	svr := server.New(database, geolocationClient, views)
+	middlewares := middleware.Initialize()
+	svr := server.New(database, geolocationClient, views, middlewares)
 	fmt.Println("Listening on port", port)
 	http.ListenAndServe(port, svr)
 }

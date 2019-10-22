@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/markbates/goth/gothic"
+
+	"github.com/yousseffarkhani/playground/backend2/authentication"
 	"github.com/yousseffarkhani/playground/backend2/store"
 
 	"github.com/gorilla/mux"
@@ -36,11 +39,16 @@ type playgroundServer struct {
 	database  PlaygroundStore
 	apiClient store.GeolocationClient
 	http.Handler
-	views map[string]View
+	views       map[string]View
+	middlewares map[string]Middleware
+}
+
+type Middleware interface {
+	ThenFunc(finalPage func(http.ResponseWriter, *http.Request)) http.Handler
 }
 
 type View interface {
-	Render(w io.Writer, r *http.Request, data interface{}) error
+	Render(w io.Writer, r *http.Request, data RenderingData) error
 }
 
 type PlaygroundStore interface {
@@ -48,13 +56,14 @@ type PlaygroundStore interface {
 	Playground(ID int) (store.Playground, error)
 }
 
-func New(store PlaygroundStore, client store.GeolocationClient, views map[string]View) *playgroundServer {
+func New(store PlaygroundStore, client store.GeolocationClient, views map[string]View, middlewares map[string]Middleware) *playgroundServer {
 	svr := new(playgroundServer)
 	svr.database = store
-	router := newRouter(svr)
-	svr.Handler = router
 	svr.apiClient = client
 	svr.views = views
+	svr.middlewares = middlewares
+	router := newRouter(svr)
+	svr.Handler = router
 	return svr
 }
 
@@ -64,12 +73,17 @@ func newRouter(svr *playgroundServer) *mux.Router {
 	router.HandleFunc("/sw.js", serveSW).Methods(http.MethodGet)
 
 	// Views
-	router.Handle(URLHome, http.HandlerFunc(svr.homeHandler)).Methods(http.MethodGet)
-	router.Handle(URLPlaygrounds, http.HandlerFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
-	router.Handle(URLPlayground, http.HandlerFunc(svr.playgroundHandler)).Methods(http.MethodGet)
+	router.Handle(URLHome, svr.middlewares["isLogged"].ThenFunc(svr.homeHandler)).Methods(http.MethodGet)
+	router.Handle(URLPlaygrounds, svr.middlewares["isLogged"].ThenFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
+	router.Handle(URLPlayground, svr.middlewares["isLogged"].ThenFunc(svr.playgroundHandler)).Methods(http.MethodGet)
+	router.Handle(URLLogin, svr.middlewares["isLogged"].ThenFunc(svr.loginHandler)).Methods(http.MethodGet)
 	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
 	// TODO : Put back when main.go is in /cmd file
 	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("../static"))))
+
+	// Authentication
+	router.Handle("/auth/{provider}", http.HandlerFunc(gothic.BeginAuthHandler)).Methods(http.MethodGet)
+	router.Handle("/auth/callback/{provider}", http.HandlerFunc(callbackHandler))
 
 	// API
 	router.Handle(APIPlaygrounds, http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
@@ -82,6 +96,30 @@ func newRouter(svr *playgroundServer) *mux.Router {
 	}).Methods(http.MethodGet)
 
 	return router
+}
+
+func callbackHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := gothic.CompleteUserAuth(w, r)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	var username string
+	switch {
+	case user.NickName != "":
+		username = user.NickName
+	case user.FirstName != "":
+		username = user.FirstName
+	case user.Email != "":
+		username = user.Email
+	default:
+		username = user.UserID
+	}
+
+	authentication.SetJwtCookie(w, username)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func serveSW(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +146,10 @@ func (p *playgroundServer) playgroundHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	p.renderView(w, r, "playground", playground)
+}
+
+func (p *playgroundServer) loginHandler(w http.ResponseWriter, r *http.Request) {
+	p.renderView(w, r, "login", nil)
 }
 
 func (p *playgroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Request) {
@@ -186,12 +228,30 @@ func encodeToJson(w http.ResponseWriter, data interface{}) error {
 	return json.NewEncoder(w).Encode(data)
 }
 
+type RenderingData struct {
+	Username string
+	Data     interface{}
+}
+
 func (p *playgroundServer) renderView(w http.ResponseWriter, r *http.Request, template string, data interface{}) {
+	claims, ok := r.Context().Value("claims").(*authentication.Claims)
+	var username string
+	if ok {
+		username = claims.Username
+	} else {
+		username = ""
+	}
+
+	renderingData := RenderingData{
+		Username: username,
+		Data:     data,
+	}
+
 	if view, ok := p.views[template]; ok {
 		w.Header().Set("Content-Type", HtmlContentType)
 		w.Header().Set("Accept-Encoding", GzipAcceptEncoding)
 		w.WriteHeader(http.StatusOK)
-		err := view.Render(w, r, data)
+		err := view.Render(w, r, renderingData)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}

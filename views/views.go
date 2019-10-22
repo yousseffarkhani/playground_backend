@@ -26,6 +26,7 @@ func Initialize() map[string]server.View {
 	views["home"] = newView("main", templateDir+"/home.html")
 	views["playgrounds"] = newView("main", templateDir+"/playgrounds.html")
 	views["playground"] = newView("main", templateDir+"/playground.html")
+	views["login"] = newView("main", templateDir+"/login.html")
 	return views
 }
 
@@ -46,7 +47,7 @@ func layoutFiles() []string {
 	return files
 }
 
-func (v *View) Render(w io.Writer, r *http.Request, data interface{}) error {
+func (v *View) Render(w io.Writer, r *http.Request, data server.RenderingData) error {
 	err := v.template.ExecuteTemplate(w, v.Layout, data)
 	return err
 }

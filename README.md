@@ -50,17 +50,28 @@ La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
     1. Enregister le Service worker dans main.js
     1. Ajouter le sw.js
     1. Ajouter la pop-up d'installation
-- Se connecter en OpenID et recevoir un JWT Token
-    > Utiliser Goth pour homogénéiser la gestion des providers
-    > Utiliser github.com/dgrijalva/jwt-go pour mettre en place le JWT
-    > Mettre les ID client et secret key en tant que variables d'environnement
+- Se connecter en OpenID et envoyer un JWT Token
+    1. Mettre en place l'OpenID avec les différents providers
+    1. Envoyer la requête aux providers
+    1. Récupérer les informations des providers
+    1. Forger un JWT avec les informations utilisateur nickname ou firstname ou email
+        > Utiliser Goth pour homogénéiser la gestion des providers
+        > Utiliser github.com/dgrijalva/jwt-go pour mettre en place le JWT
+        > Mettre les ID client et secret key en tant que variables d'environnement
+- Mettre à jour l'UI en fonction de la présence d'un JWT
+- Mettre en place le refresh middleware
+    1. Parser le cookie
+    1. Si le cookie est valide, réinitialiser le temps d'expiration
 - Commenter les terrains en étant connecté
 - Ajouter de nouveaux terrains en étant connecté
     > Si le terrain existe déjà renvoyer un statut badrequest
     > Vérifier la casse des noms de terrains au moment de les ajouter
 - Disposer d'une fonction de recherche en fonction de certains critères (arrondissement, nom, horaires d'ouverture)
 - En disposant d'un profil modérateur ou administrateur, accepter les demandes d'ajout de nouveaux terrains
-    > Ajouter les rôles dans le JWT
+    1. Parser le cookie
+    1. Si le cookie n'est pas valide, rediriger vers la page de login
+        > Ajouter les rôles dans le JWT
+        > Ajouter un middleware d'autorisation d'accès à certaines pages
 - Afficher l'itinéraire (à pied, en voiture, le meilleur transport)
 - Pouvoir noter les terrains en étant connecté
 - Mettre en place des évènements et un calendrier pour chaque terrain (pour que des joueurs puisse convenir sur un horaire de RDV)

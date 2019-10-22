@@ -4,6 +4,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/yousseffarkhani/playground/backend2/middleware"
+
 	"github.com/yousseffarkhani/playground/backend2/geolocationClient"
 
 	"github.com/yousseffarkhani/playground/backend2/server"
@@ -17,7 +19,8 @@ func TestPostPlaygroundAndGet(t *testing.T) {
 		t.Fatalf("Problem opening file, %v", err)
 	}
 	client := geolocationClient.APIGouvFR{}
-	svr := server.New(database, client, nil)
+	middlewares := middleware.Initialize()
+	svr := server.New(database, client, nil, middlewares)
 
 	t.Run("Get all playgrounds SORTED by name", func(t *testing.T) {
 		req := test.NewGetRequest(t, server.APIPlaygrounds)

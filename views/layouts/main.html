@@ -14,6 +14,8 @@
     <link rel="manifest" href="/static/manifest.json">
     <link rel="shortcut icon" href="https://freepngimg.com/download/basketball/4-2-basketball-transparent.png"
         type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
 </head>
 
 <body>
@@ -34,11 +36,22 @@
                     <li class="nav-item">
                         <a class="nav-link" id="playgrounds" href="/playgrounds">Terrains</a>
                     </li>
+                    {{if .Username}}
                     <li class="nav-item">
-                        <a class="nav-link" id="login" href="login">Login</a>
+                        <a class="nav-link" id="login" href="/login">Déconnexion {{.Username}}</a>
                     </li>
+                    {{else}}
+                    <li class="nav-item">
+                        <a class="nav-link" id="login" href="/login">Login</a>
+                    </li>
+                    {{end}}
                     <li class="nav-item">
                         <a class="nav-link" id="contact" href="contact.html">Contact</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="setup_button1" onclick="installApp()"
+                            style="display:none; cursor:pointer;">Installer
+                            l'app</a>
                     </li>
                     <!-- <li class="nav-item dropdown">
 						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdownBlog" data-toggle="dropdown"
@@ -58,7 +71,14 @@
     <br />
     <!-- Page Content -->
     <div class="container">
-        {{ template "yield" .}}
+        {{ template "yield" .Data}}
+    </div>
+    <br>
+    <div class="alert alert-primary" role="alert" style="display:none; text-align: center;" id="setup_div">
+        <strong>En cliquant sur le bouton suivant, vous pouvez installer et accéder à ce site web comme une application
+            classique.</strong>
+        <button id="setup_button2" onclick="installApp()" style="display:none; margin:auto;"
+            class="btn btn-primary mb-2" type="button">Installer</button>
     </div>
     <!-- Footer -->
     <footer class="py-5 bg-dark">
@@ -66,7 +86,6 @@
             <p class="m-0 text-center text-white">Copyright &copy; Playground 2019</p>
         </div>
     </footer>
-
 
     <script src="/static/js/jquery.min.js"></script>
     <script src="/static/js/bootstrap.bundle.min.js"></script>

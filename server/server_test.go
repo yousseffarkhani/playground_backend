@@ -9,10 +9,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/yousseffarkhani/playground/backend2/server"
+
 	"github.com/yousseffarkhani/playground/backend2/store"
 	"github.com/yousseffarkhani/playground/backend2/test"
-
-	"github.com/yousseffarkhani/playground/backend2/server"
 )
 
 type mockPlaygroundStore struct {
@@ -37,13 +37,13 @@ func (m *mockGeolocationClient) GetLongAndLat(adress string) (long, lat float64,
 }
 
 type mockView struct {
-	data   interface{}
+	server.RenderingData
 	Called bool
 }
 
-func (m *mockView) Render(w io.Writer, r *http.Request, data interface{}) error {
+func (m *mockView) Render(w io.Writer, r *http.Request, data server.RenderingData) error {
 	m.Called = true
-	m.data = data
+	m.RenderingData = data
 	return nil
 }
 
@@ -62,10 +62,14 @@ func TestViews(t *testing.T) {
 		playground2,
 	}
 	str := &mockPlaygroundStore{playgrounds: playgrounds}
+	mockIsLogged := &mockMiddleware{}
+	middlewares := map[string]server.Middleware{
+		"isLogged": mockIsLogged,
+	}
 
-	mockHomeView := &mockView{}
-	mockPlaygroundsView := &mockView{}
-	mockPlaygroundView := &mockView{}
+	mockHomeView := &mockView{RenderingData: server.RenderingData{"", nil}}
+	mockPlaygroundsView := &mockView{RenderingData: server.RenderingData{"", playgrounds}}
+	mockPlaygroundView := &mockView{RenderingData: server.RenderingData{"", playground1}}
 
 	views := map[string]server.View{
 		"home":        mockHomeView,
@@ -73,17 +77,22 @@ func TestViews(t *testing.T) {
 		"playground":  mockPlaygroundView,
 	}
 
-	svr := server.New(str, nil, views)
+	svr := server.New(str, nil, views, middlewares)
 
-	type cases struct {
-		data     interface{}
-		template *mockView
-	}
+	// type view struct {
+	// 	data     server.RenderingData
+	// 	template *mockView
+	// }
 
-	tests := map[string]cases{
-		server.URLHome:               {nil, mockHomeView},
-		server.URLPlaygrounds:        {playgrounds, mockPlaygroundsView},
-		server.URLPlaygrounds + "/1": {playground1, mockPlaygroundView},
+	// tests := map[string]view{
+	// 	server.URLHome:               view{server.RenderingData{"", nil}, mockHomeView},
+	// 	server.URLPlaygrounds:        view{server.RenderingData{"", playgrounds}, mockPlaygroundsView},
+	// 	server.URLPlaygrounds + "/1": view{server.RenderingData{"", playground1}, mockPlaygroundView},
+	// }
+	tests := map[string]*mockView{
+		server.URLHome:               mockHomeView,
+		server.URLPlaygrounds:        mockPlaygroundsView,
+		server.URLPlaygrounds + "/1": mockPlaygroundView,
 	}
 
 	for url, tt := range tests {
@@ -97,11 +106,13 @@ func TestViews(t *testing.T) {
 			assertHeader(t, res, "Content-Type", server.HtmlContentType)
 			assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
 
-			if tt.template.Called != true {
+			if tt.Called != true {
 				t.Error("View should be called")
 			}
-			if !reflect.DeepEqual(tt.template.data, tt.data) {
-				t.Errorf("got : %v, want : %v", tt.template.data, tt.data)
+			want := tt.Data
+			got := tt.RenderingData.Data
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("got : %v, want : %v", got, want)
 			}
 		})
 	}
@@ -120,7 +131,47 @@ func TestViews(t *testing.T) {
 			t.Errorf("URL should be \"/\", got : %q", url.Path)
 		}
 	})
-	// Contexte ?
+}
+
+func TestMiddlewares(t *testing.T) {
+	mockIsLogged := &mockMiddleware{}
+	middlewares := map[string]server.Middleware{
+		"isLogged": mockIsLogged,
+	}
+	str := &mockPlaygroundStore{}
+	views := map[string]server.View{}
+
+	svr := server.New(str, nil, views, middlewares)
+
+	cases := []string{
+		server.URLHome,
+		server.URLPlaygrounds,
+		server.URLPlayground,
+		server.URLLogin,
+	}
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("isLogged middleware is called on route %q", c), func(t *testing.T) {
+			req := test.NewGetRequest(t, c)
+
+			svr.ServeHTTP(httptest.NewRecorder(), req)
+
+			if mockIsLogged.called != true {
+				t.Errorf("IsLogged middleware hasn't been called")
+			}
+			mockIsLogged.called = false
+		})
+	}
+}
+
+type mockMiddleware struct {
+	called bool
+}
+
+func (m *mockMiddleware) ThenFunc(finalPage func(http.ResponseWriter, *http.Request)) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m.called = true
+		finalPage(w, r)
+	})
 }
 
 func TestGetAPIs(t *testing.T) {
@@ -140,7 +191,11 @@ func TestGetAPIs(t *testing.T) {
 	}
 	str := &mockPlaygroundStore{playgrounds: playgrounds}
 	client := &mockGeolocationClient{}
-	svr := server.New(str, client, nil)
+	mockIsLogged := &mockMiddleware{}
+	middlewares := map[string]server.Middleware{
+		"isLogged": mockIsLogged,
+	}
+	svr := server.New(str, client, nil, middlewares)
 
 	cases := []string{
 		server.APIPlaygrounds,
@@ -245,7 +300,11 @@ func TestGetAPIs(t *testing.T) {
 func TestPostAPIs(t *testing.T) {
 	t.Run("Post request to /api/playgrounds returns 400", func(t *testing.T) {
 		// Arrange
-		svr := server.New(nil, nil, nil)
+		mockIsLogged := &mockMiddleware{}
+		middlewares := map[string]server.Middleware{
+			"isLogged": mockIsLogged,
+		}
+		svr := server.New(nil, nil, nil, middlewares)
 
 		// Act
 		req, err := http.NewRequest(http.MethodPost, "/api/playgrounds", nil)
