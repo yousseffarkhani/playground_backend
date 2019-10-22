@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/yousseffarkhani/playground/backend2/views"
 
@@ -17,12 +18,11 @@ import (
 )
 
 const (
-	port       = ":5000"
+	port       = ":443"
 	dbFileName = "playgrounds.json"
 )
 
 func main() {
-	fmt.Println(os.Getenv("TEST"))
 	database, err := store.NewFromFile(dbFileName)
 	if err != nil {
 		log.Fatalf("Problem opening %s %v", dbFileName, err)
@@ -31,6 +31,9 @@ func main() {
 	views := views.Initialize()
 	middlewares := middleware.Initialize()
 	svr := server.New(database, geolocationClient, views, middlewares)
+	pwd, _ := os.Getwd()
+	pathToCertFile := os.Getenv("CERTFILE")
+	pathToPrivKey := os.Getenv("PRIVKEY")
 	fmt.Println("Listening on port", port)
-	log.Fatal(http.ListenAndServe(port, svr))
+	log.Fatal(http.ListenAndServeTLS(port, filepath.Join(pwd, pathToCertFile), filepath.Join(pwd, pathToPrivKey), svr))
 }
