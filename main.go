@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/yousseffarkhani/playground/backend2/views"
 
@@ -21,6 +22,7 @@ const (
 )
 
 func main() {
+	fmt.Println(os.Getenv("TEST"))
 	database, err := store.NewFromFile(dbFileName)
 	if err != nil {
 		log.Fatalf("Problem opening %s %v", dbFileName, err)
@@ -30,5 +32,5 @@ func main() {
 	middlewares := middleware.Initialize()
 	svr := server.New(database, geolocationClient, views, middlewares)
 	fmt.Println("Listening on port", port)
-	http.ListenAndServe(port, svr)
+	log.Fatal(http.ListenAndServe(port, svr))
 }
