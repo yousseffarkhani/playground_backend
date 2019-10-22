@@ -42,7 +42,7 @@ func newView(layout string, files ...string) *View {
 func layoutFiles() []string {
 	files, err := filepath.Glob(layoutDir + "/*.html")
 	if err != nil {
-		fmt.Println("er")
+		fmt.Println(err)
 	}
 	return files
 }

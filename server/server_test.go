@@ -30,6 +30,7 @@ var playgrounds = store.Playgrounds{
 }
 var dummyMiddlewares = map[string]server.Middleware{
 	"isLogged": &mockMiddleware{},
+	"refresh":  &mockMiddleware{},
 }
 
 type mockPlaygroundStore struct {
@@ -139,8 +140,10 @@ func TestViews(t *testing.T) {
 
 func TestMiddlewares(t *testing.T) {
 	mockIsLogged := &mockMiddleware{}
+	mockRefreshJWT := mockIsLogged
 	middlewares := map[string]server.Middleware{
 		"isLogged": mockIsLogged,
+		"refresh":  mockRefreshJWT,
 	}
 	str := &mockPlaygroundStore{}
 
@@ -149,8 +152,7 @@ func TestMiddlewares(t *testing.T) {
 	cases := []string{
 		server.URLHome,
 		server.URLPlaygrounds,
-		server.URLPlayground,
-		server.URLLogin,
+		server.URLPlaygrounds + "/1",
 	}
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("isLogged middleware is called on route %q", c), func(t *testing.T) {

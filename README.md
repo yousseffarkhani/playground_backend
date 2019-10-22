@@ -63,12 +63,16 @@ La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
     1. Invalider le JWT
 - Mettre en place le refresh middleware
     1. Parser le cookie
-    1. Si le cookie est valide, réinitialiser le temps d'expiration
+    1. Si le temps d'expiration du cookie est inférieur à 5 min, réinitialiser le temps d'expiration
+- Intégrer Googlemap
 - Commenter les terrains en étant connecté
+    1. Mettre en place une BDD pour enregister les commentaires
+    1. Mettre en place une API CRUD pour interagir avec les commentaires
+    > Vérifier que l'utilisateur est connecté lorsqu'il poste un commentaire
+    > Afficher l'input commentaire lorsque l'utilisateur est connecté
 - Ajouter de nouveaux terrains en étant connecté
     > Si le terrain existe déjà renvoyer un statut badrequest
     > Vérifier la casse des noms de terrains au moment de les ajouter
-- Intégrer Googlemap
 - Disposer d'une fonction de recherche en fonction de certains critères (arrondissement, nom, horaires d'ouverture)
 - En disposant d'un profil modérateur ou administrateur, accepter les demandes d'ajout de nouveaux terrains
     1. Parser le cookie

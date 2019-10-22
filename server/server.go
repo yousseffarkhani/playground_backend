@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -28,6 +29,7 @@ const (
 
 	// Routes
 	APIPlaygrounds        = "/api/playgrounds"
+	APIPlayground         = APIPlaygrounds + "/{ID}"
 	APINearestPlaygrounds = "/api/nearestPlaygrounds"
 	// Other
 	JsonContentType    = "application/json"
@@ -69,14 +71,13 @@ func New(store PlaygroundStore, client store.GeolocationClient, views map[string
 
 func newRouter(svr *playgroundServer) *mux.Router {
 	router := mux.NewRouter()
-
 	router.HandleFunc("/sw.js", serveSW).Methods(http.MethodGet)
 
 	// Views
-	router.Handle(URLHome, svr.middlewares["isLogged"].ThenFunc(svr.homeHandler)).Methods(http.MethodGet)
-	router.Handle(URLPlaygrounds, svr.middlewares["isLogged"].ThenFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
-	router.Handle(URLPlayground, svr.middlewares["isLogged"].ThenFunc(svr.playgroundHandler)).Methods(http.MethodGet)
-	router.Handle(URLLogin, svr.middlewares["isLogged"].ThenFunc(svr.loginHandler)).Methods(http.MethodGet)
+	router.Handle(URLHome, svr.middlewares["refresh"].ThenFunc(svr.homeHandler)).Methods(http.MethodGet)
+	router.Handle(URLPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
+	router.Handle(URLPlayground, svr.middlewares["refresh"].ThenFunc(svr.playgroundHandler)).Methods(http.MethodGet)
+	router.Handle(URLLogin, http.HandlerFunc(svr.loginHandler)).Methods(http.MethodGet)
 	router.HandleFunc(URLLogout, logoutHandler).Methods(http.MethodGet)
 	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
 	// TODO : Put back when main.go is in /cmd file
@@ -89,7 +90,7 @@ func newRouter(svr *playgroundServer) *mux.Router {
 	// API
 	router.Handle(APIPlaygrounds, http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
 	router.Handle(APIPlaygrounds+"/", http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
-	router.Handle(APIPlaygrounds+"/{ID}", http.HandlerFunc(svr.getPlayground)).Methods(http.MethodGet)
+	router.Handle(APIPlayground, http.HandlerFunc(svr.getPlayground)).Methods(http.MethodGet)
 	router.Handle(APINearestPlaygrounds, http.HandlerFunc(svr.getNearestPlaygrounds)).Methods(http.MethodGet)
 
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -169,6 +170,7 @@ func (p *playgroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Requ
 func (p *playgroundServer) getPlayground(w http.ResponseWriter, r *http.Request) {
 	ID, err := extractIDFromRequest(r)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -222,6 +224,7 @@ func extractIDFromRequest(r *http.Request) (int, error) {
 	vars := mux.Vars(r)
 	ID, err := strconv.Atoi(vars["ID"])
 	if err != nil {
+		fmt.Println(err)
 		return 0, fmt.Errorf("Couldn't get id from request, %s", r.URL.String())
 	}
 	return ID, nil
@@ -240,8 +243,8 @@ type RenderingData struct {
 }
 
 func (p *playgroundServer) renderView(w http.ResponseWriter, r *http.Request, template string, data interface{}) {
-	claims, ok := r.Context().Value("claims").(*authentication.Claims)
 	var username string
+	claims, ok := r.Context().Value("claims").(*authentication.Claims)
 	if ok {
 		username = claims.Username
 	} else {
