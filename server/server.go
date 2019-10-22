@@ -77,6 +77,7 @@ func newRouter(svr *playgroundServer) *mux.Router {
 	router.Handle(URLPlaygrounds, svr.middlewares["isLogged"].ThenFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
 	router.Handle(URLPlayground, svr.middlewares["isLogged"].ThenFunc(svr.playgroundHandler)).Methods(http.MethodGet)
 	router.Handle(URLLogin, svr.middlewares["isLogged"].ThenFunc(svr.loginHandler)).Methods(http.MethodGet)
+	router.HandleFunc(URLLogout, logoutHandler).Methods(http.MethodGet)
 	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
 	// TODO : Put back when main.go is in /cmd file
 	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("../static"))))
@@ -150,6 +151,11 @@ func (p *playgroundServer) playgroundHandler(w http.ResponseWriter, r *http.Requ
 
 func (p *playgroundServer) loginHandler(w http.ResponseWriter, r *http.Request) {
 	p.renderView(w, r, "login", nil)
+}
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	authentication.UnsetJWTCookie(w)
+	http.Redirect(w, r, URLHome, http.StatusFound)
 }
 
 func (p *playgroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Request) {

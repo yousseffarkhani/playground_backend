@@ -20,15 +20,15 @@ import (
 func init() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Print("No .env file found")
 	}
 
-	gothic.Store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+	gothic.Store = sessions.NewCookieStore([]byte(getEnv("SESSION_SECRET", "")))
 	goth.UseProviders(
 		// TODO : change callback URLs
-		facebook.New(os.Getenv("FACEBOOK_ID"), os.Getenv("FACEBOOK_SECRET"), "http://localhost:5000/auth/callback/facebook"),
-		google.New(os.Getenv("GOOGLE_ID"), os.Getenv("GOOGLE_SECRET"), "http://localhost:5000/auth/callback/google"),
-		github.New(os.Getenv("GITHUB_ID"), os.Getenv("GITHUB_SECRET"), "http://localhost:5000/auth/callback/github"),
+		facebook.New(getEnv("FACEBOOK_ID", ""), getEnv("FACEBOOK_SECRET", ""), "http://localhost:5000/auth/callback/facebook"),
+		google.New(getEnv("GOOGLE_ID", ""), getEnv("GOOGLE_SECRET", ""), "http://localhost:5000/auth/callback/google"),
+		github.New(getEnv("GITHUB_ID", ""), getEnv("GITHUB_SECRET", ""), "http://localhost:5000/auth/callback/github"),
 	)
 }
 
@@ -46,7 +46,16 @@ func SetJwtCookie(w http.ResponseWriter, username string) {
 	})
 }
 
-var jwtKey = []byte(os.Getenv("JWT_SECRET"))
+func UnsetJWTCookie(w http.ResponseWriter) {
+	expired := time.Now().Add(time.Minute * -5)
+	http.SetCookie(w, &http.Cookie{
+		Name:    "Token",
+		Value:   "",
+		Expires: expired,
+	})
+}
+
+var jwtKey = []byte(getEnv("JWT_SECRET", ""))
 
 type Claims struct {
 	Username string `json:"username"`
@@ -81,4 +90,11 @@ func ParseCookie(c *http.Cookie) (*Claims, *jwt.Token, error) {
 		return nil, nil, err
 	}
 	return claims, token, nil
+}
+
+func getEnv(key, defaultVal string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultVal
 }

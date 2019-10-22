@@ -15,6 +15,23 @@ import (
 	"github.com/yousseffarkhani/playground/backend2/test"
 )
 
+var playground1 = store.Playground{
+	Name: "test1",
+	Long: 2.36016000,
+	Lat:  48.85320000,
+}
+var playground2 = store.Playground{
+	Name: "test2",
+	Long: 2.31565,
+	Lat:  48.8533}
+var playgrounds = store.Playgrounds{
+	playground1,
+	playground2,
+}
+var dummyMiddlewares = map[string]server.Middleware{
+	"isLogged": &mockMiddleware{},
+}
+
 type mockPlaygroundStore struct {
 	playgrounds store.Playgrounds
 }
@@ -37,39 +54,22 @@ func (m *mockGeolocationClient) GetLongAndLat(adress string) (long, lat float64,
 }
 
 type mockView struct {
-	server.RenderingData
-	Called bool
+	data   server.RenderingData
+	called bool
 }
 
 func (m *mockView) Render(w io.Writer, r *http.Request, data server.RenderingData) error {
-	m.Called = true
-	m.RenderingData = data
+	m.called = true
+	m.data = data
 	return nil
 }
 
 func TestViews(t *testing.T) {
-	playground1 := store.Playground{
-		Name: "test1",
-		Long: 2.36016000,
-		Lat:  48.85320000,
-	}
-	playground2 := store.Playground{
-		Name: "test2",
-		Long: 2.31565,
-		Lat:  48.8533}
-	playgrounds := store.Playgrounds{
-		playground1,
-		playground2,
-	}
 	str := &mockPlaygroundStore{playgrounds: playgrounds}
-	mockIsLogged := &mockMiddleware{}
-	middlewares := map[string]server.Middleware{
-		"isLogged": mockIsLogged,
-	}
 
-	mockHomeView := &mockView{RenderingData: server.RenderingData{"", nil}}
-	mockPlaygroundsView := &mockView{RenderingData: server.RenderingData{"", playgrounds}}
-	mockPlaygroundView := &mockView{RenderingData: server.RenderingData{"", playground1}}
+	mockHomeView := &mockView{}
+	mockPlaygroundsView := &mockView{}
+	mockPlaygroundView := &mockView{}
 
 	views := map[string]server.View{
 		"home":        mockHomeView,
@@ -77,22 +77,26 @@ func TestViews(t *testing.T) {
 		"playground":  mockPlaygroundView,
 	}
 
-	svr := server.New(str, nil, views, middlewares)
+	svr := server.New(str, nil, views, dummyMiddlewares)
 
-	// type view struct {
-	// 	data     server.RenderingData
-	// 	template *mockView
-	// }
+	type testStruct struct {
+		mockView     *mockView
+		expectedData server.RenderingData
+	}
 
-	// tests := map[string]view{
-	// 	server.URLHome:               view{server.RenderingData{"", nil}, mockHomeView},
-	// 	server.URLPlaygrounds:        view{server.RenderingData{"", playgrounds}, mockPlaygroundsView},
-	// 	server.URLPlaygrounds + "/1": view{server.RenderingData{"", playground1}, mockPlaygroundView},
-	// }
-	tests := map[string]*mockView{
-		server.URLHome:               mockHomeView,
-		server.URLPlaygrounds:        mockPlaygroundsView,
-		server.URLPlaygrounds + "/1": mockPlaygroundView,
+	tests := map[string]testStruct{
+		server.URLHome: testStruct{
+			mockView:     mockHomeView,
+			expectedData: server.RenderingData{"", nil},
+		},
+		server.URLPlaygrounds: testStruct{
+			mockView:     mockPlaygroundsView,
+			expectedData: server.RenderingData{"", playgrounds},
+		},
+		server.URLPlaygrounds + "/1": testStruct{
+			mockView:     mockPlaygroundView,
+			expectedData: server.RenderingData{"", playground1},
+		},
 	}
 
 	for url, tt := range tests {
@@ -106,11 +110,11 @@ func TestViews(t *testing.T) {
 			assertHeader(t, res, "Content-Type", server.HtmlContentType)
 			assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
 
-			if tt.Called != true {
+			if tt.mockView.called != true {
 				t.Error("View should be called")
 			}
-			want := tt.Data
-			got := tt.RenderingData.Data
+			want := tt.expectedData
+			got := tt.mockView.data
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("got : %v, want : %v", got, want)
 			}
@@ -139,9 +143,8 @@ func TestMiddlewares(t *testing.T) {
 		"isLogged": mockIsLogged,
 	}
 	str := &mockPlaygroundStore{}
-	views := map[string]server.View{}
 
-	svr := server.New(str, nil, views, middlewares)
+	svr := server.New(str, nil, nil, middlewares)
 
 	cases := []string{
 		server.URLHome,
@@ -176,26 +179,10 @@ func (m *mockMiddleware) ThenFunc(finalPage func(http.ResponseWriter, *http.Requ
 
 func TestGetAPIs(t *testing.T) {
 	// Arrange
-	playground1 := store.Playground{
-		Name: "test1",
-		Long: 2.36016000,
-		Lat:  48.85320000,
-	}
-	playground2 := store.Playground{
-		Name: "test2",
-		Long: 2.31565,
-		Lat:  48.8533}
-	playgrounds := store.Playgrounds{
-		playground1,
-		playground2,
-	}
 	str := &mockPlaygroundStore{playgrounds: playgrounds}
 	client := &mockGeolocationClient{}
-	mockIsLogged := &mockMiddleware{}
-	middlewares := map[string]server.Middleware{
-		"isLogged": mockIsLogged,
-	}
-	svr := server.New(str, client, nil, middlewares)
+
+	svr := server.New(str, client, nil, dummyMiddlewares)
 
 	cases := []string{
 		server.APIPlaygrounds,
@@ -300,11 +287,7 @@ func TestGetAPIs(t *testing.T) {
 func TestPostAPIs(t *testing.T) {
 	t.Run("Post request to /api/playgrounds returns 400", func(t *testing.T) {
 		// Arrange
-		mockIsLogged := &mockMiddleware{}
-		middlewares := map[string]server.Middleware{
-			"isLogged": mockIsLogged,
-		}
-		svr := server.New(nil, nil, nil, middlewares)
+		svr := server.New(nil, nil, nil, dummyMiddlewares)
 
 		// Act
 		req, err := http.NewRequest(http.MethodPost, "/api/playgrounds", nil)

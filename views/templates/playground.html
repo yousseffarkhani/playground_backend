@@ -1,7 +1,7 @@
 {{define "yield"}}
 <!-- Page Heading/Breadcrumbs -->
-<h1 class="mt-4 mb-3">{{.Name}}
-    <small>{{.Arrondissement}}</small>
+<h1 class="mt-4 mb-3">{{.Data.Name}}
+    <small>{{.Data.Arrondissement}}</small>
 </h1>
 
 <!-- Portfolio Item Row -->
@@ -20,23 +20,23 @@
                 <tbody>
                     <tr>
                         <td>Adresse</td>
-                        <td>{{.Adress}}</td>
+                        <td>{{.Data.Adress}}</td>
                     </tr>
                     <tr>
                         <td>Dimensions</td>
-                        <td>{{.Dimensions}}m²</td>
+                        <td>{{.Data.Dimensions}}m²</td>
                     </tr>
                     <tr>
                         <td>Revêtement</td>
-                        <td>{{.Coating}}</td>
+                        <td>{{.Data.Coating}}</td>
                     </tr>
                     <tr>
                         <td>Couvert</td>
-                        <td>{{if .Open}}non{{else}}oui{{end}}</td>
+                        <td>{{if .Data.Open}}non{{else}}oui{{end}}</td>
                     </tr>
                     <tr>
                         <td>Eclairage</td>
-                        <td>{{if .Lightning}}oui{{else}}non{{end}}</td>
+                        <td>{{if .Data.Lightning}}oui{{else}}non{{end}}</td>
                     </tr>
                 </tbody>
             </table>

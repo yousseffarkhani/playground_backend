@@ -59,6 +59,8 @@ La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
         > Utiliser github.com/dgrijalva/jwt-go pour mettre en place le JWT
         > Mettre les ID client et secret key en tant que variables d'environnement
 - Mettre à jour l'UI en fonction de la présence d'un JWT
+- Déconnexion du compte
+    1. Invalider le JWT
 - Mettre en place le refresh middleware
     1. Parser le cookie
     1. Si le cookie est valide, réinitialiser le temps d'expiration
@@ -66,6 +68,7 @@ La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
 - Ajouter de nouveaux terrains en étant connecté
     > Si le terrain existe déjà renvoyer un statut badrequest
     > Vérifier la casse des noms de terrains au moment de les ajouter
+- Intégrer Googlemap
 - Disposer d'une fonction de recherche en fonction de certains critères (arrondissement, nom, horaires d'ouverture)
 - En disposant d'un profil modérateur ou administrateur, accepter les demandes d'ajout de nouveaux terrains
     1. Parser le cookie
