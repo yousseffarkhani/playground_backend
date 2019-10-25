@@ -11,14 +11,15 @@ import (
 var Variables *configVariables
 
 type configVariables struct {
-	ProductionMode bool
-	TLS            TLS
-	FacebookOAuth  OAuthLogin
-	GoogleOAuth    OAuthLogin
-	GithubOAuth    OAuthLogin
-	JWT_SECRET     string
-	SESSION_SECRET string
-	GOOGLE_API_KEY string
+	ProductionMode           bool
+	TLS                      TLS
+	FacebookOAuth            OAuthLogin
+	GoogleOAuth              OAuthLogin
+	GithubOAuth              OAuthLogin
+	JWT_SECRET               string
+	SESSION_SECRET           string
+	GOOGLE_MAPS_API_KEY      string
+	GOOGLE_GEOCODING_API_KEY string
 }
 
 type TLS struct {
@@ -54,9 +55,10 @@ func LoadEnvVariables() {
 			ID:     os.Getenv("GITHUB_ID"),
 			Secret: os.Getenv("GITHUB_SECRET"),
 		},
-		JWT_SECRET:     os.Getenv("JWT_SECRET"),
-		SESSION_SECRET: os.Getenv("SESSION_SECRET"),
-		GOOGLE_API_KEY: os.Getenv("GOOGLE_API_KEY"),
+		JWT_SECRET:               os.Getenv("JWT_SECRET"),
+		SESSION_SECRET:           os.Getenv("SESSION_SECRET"),
+		GOOGLE_MAPS_API_KEY:      os.Getenv("GOOGLE_MAPS_API_KEY"),
+		GOOGLE_GEOCODING_API_KEY: os.Getenv("GOOGLE_GEOCODING_API_KEY"),
 	}
 }
 

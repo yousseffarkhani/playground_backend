@@ -22,7 +22,7 @@
 <script>
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(async function (position) {
-            fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.coords.latitude},${position.coords.longitude}&key={{.GOOGLE_API_KEY}}`).then(res => res.json()).then(adress => {
+            fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.coords.latitude},${position.coords.longitude}&key={{.GOOGLE_GEOCODING_API_KEY}}`).then(res => res.json()).then(adress => {
                 input.value = adress.results[0].formatted_address;
                 fetchNearestPlaygroundsAndDisplay(adress.results[0].formatted_address)
             })

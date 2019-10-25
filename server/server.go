@@ -240,9 +240,10 @@ func encodeToJson(w http.ResponseWriter, data interface{}) error {
 }
 
 type RenderingData struct {
-	Username       string
-	Data           interface{}
-	GOOGLE_API_KEY string
+	Username                 string
+	Data                     interface{}
+	GOOGLE_MAPS_API_KEY      string
+	GOOGLE_GEOCODING_API_KEY string
 }
 
 func (p *PlaygroundServer) renderView(w http.ResponseWriter, r *http.Request, template string, data interface{}) {
@@ -254,9 +255,10 @@ func (p *PlaygroundServer) renderView(w http.ResponseWriter, r *http.Request, te
 		username = ""
 	}
 	renderingData := RenderingData{
-		Username:       username,
-		Data:           data,
-		GOOGLE_API_KEY: configuration.Variables.GOOGLE_API_KEY,
+		Username:                 username,
+		Data:                     data,
+		GOOGLE_MAPS_API_KEY:      configuration.Variables.GOOGLE_MAPS_API_KEY,
+		GOOGLE_GEOCODING_API_KEY: configuration.Variables.GOOGLE_GEOCODING_API_KEY,
 	}
 
 	if view, ok := p.views[template]; ok {
