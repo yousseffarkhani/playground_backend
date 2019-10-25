@@ -6,12 +6,10 @@
         background-color: grey;
     }
 </style>
-<!-- Page Heading/Breadcrumbs -->
 <h1 class="mt-4 mb-3">{{.Data.Name}}
     <small>{{.Data.Arrondissement}}</small>
 </h1>
 
-<!-- Portfolio Item Row -->
 <div class="row">
 
     <div class="col-md-8">
@@ -144,6 +142,5 @@
         infowindow.open(map, marker);
     }
 </script>
-<script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD4Fsmf0w8DQ0pR5s8_LnUUrIKbIZDlFrY&callback=myMap"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{.GOOGLE_API_KEY}}&callback=myMap"></script>
 {{end}}

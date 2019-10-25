@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/yousseffarkhani/playground/backend2/configuration"
+
 	"github.com/markbates/goth/gothic"
 
 	"github.com/yousseffarkhani/playground/backend2/authentication"
@@ -238,8 +240,9 @@ func encodeToJson(w http.ResponseWriter, data interface{}) error {
 }
 
 type RenderingData struct {
-	Username string
-	Data     interface{}
+	Username       string
+	Data           interface{}
+	GOOGLE_API_KEY string
 }
 
 func (p *PlaygroundServer) renderView(w http.ResponseWriter, r *http.Request, template string, data interface{}) {
@@ -250,10 +253,10 @@ func (p *PlaygroundServer) renderView(w http.ResponseWriter, r *http.Request, te
 	} else {
 		username = ""
 	}
-
 	renderingData := RenderingData{
-		Username: username,
-		Data:     data,
+		Username:       username,
+		Data:           data,
+		GOOGLE_API_KEY: configuration.Variables.GOOGLE_API_KEY,
 	}
 
 	if view, ok := p.views[template]; ok {

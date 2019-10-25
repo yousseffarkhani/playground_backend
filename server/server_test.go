@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/yousseffarkhani/playground/backend2/configuration"
 	"github.com/yousseffarkhani/playground/backend2/server"
 
 	"github.com/yousseffarkhani/playground/backend2/store"
@@ -66,6 +67,7 @@ func (m *mockView) Render(w io.Writer, r *http.Request, data server.RenderingDat
 }
 
 func TestViews(t *testing.T) {
+	configuration.LoadEnvVariables()
 	str := &mockPlaygroundStore{playgrounds: playgrounds}
 
 	mockHomeView := &mockView{}
@@ -87,16 +89,22 @@ func TestViews(t *testing.T) {
 
 	tests := map[string]testStruct{
 		server.URLHome: testStruct{
-			mockView:     mockHomeView,
-			expectedData: server.RenderingData{"", nil},
+			mockView: mockHomeView,
+			expectedData: server.RenderingData{
+				Username: "",
+				Data:     nil},
 		},
 		server.URLPlaygrounds: testStruct{
-			mockView:     mockPlaygroundsView,
-			expectedData: server.RenderingData{"", playgrounds},
+			mockView: mockPlaygroundsView,
+			expectedData: server.RenderingData{
+				Username: "",
+				Data:     playgrounds},
 		},
 		server.URLPlaygrounds + "/1": testStruct{
-			mockView:     mockPlaygroundView,
-			expectedData: server.RenderingData{"", playground1},
+			mockView: mockPlaygroundView,
+			expectedData: server.RenderingData{
+				Username: "",
+				Data:     playground1},
 		},
 	}
 
@@ -139,6 +147,7 @@ func TestViews(t *testing.T) {
 }
 
 func TestMiddlewares(t *testing.T) {
+	configuration.LoadEnvVariables()
 	mockIsLogged := &mockMiddleware{}
 	mockRefreshJWT := mockIsLogged
 	middlewares := map[string]server.Middleware{

@@ -18,6 +18,7 @@ type configVariables struct {
 	GithubOAuth    OAuthLogin
 	JWT_SECRET     string
 	SESSION_SECRET string
+	GOOGLE_API_KEY string
 }
 
 type TLS struct {
@@ -55,6 +56,7 @@ func LoadEnvVariables() {
 		},
 		JWT_SECRET:     os.Getenv("JWT_SECRET"),
 		SESSION_SECRET: os.Getenv("SESSION_SECRET"),
+		GOOGLE_API_KEY: os.Getenv("GOOGLE_API_KEY"),
 	}
 }
 
