@@ -10,11 +10,6 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
     - Réaliser le déploiement d'un site en HTTPS avec un nom de domaine acheté
     - Mettre en oeuvre les connaissances apprises en NodeJS, docker, HTML et CSS.
     - Réaliser un site utile à terme :-)
-# Architecture
-## Front-end
-Simple fichier HTML + JS
-## Back-end
-La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
 
 # Fonctionnalités (par ordre de priorité)
 - Afficher l'ensemble des terrains de basket parisien
@@ -65,6 +60,7 @@ La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
     1. Parser le cookie
     1. Si le temps d'expiration du cookie est inférieur à 5 min, réinitialiser le temps d'expiration
 - Intégrer Googlemap
+- Utiliser la géoloc du device pour rechercher les terrains les plus proches
 - Commenter les terrains en étant connecté
     1. Mettre en place une BDD pour enregister les commentaires
     1. Mettre en place une API CRUD pour interagir avec les commentaires
@@ -93,9 +89,10 @@ La base de données sera un fichier JSON dans un 1er temps puis PostgreSQL.
 - Ajouter l'utilisation du cache pour les static assets et les appels d'API avec la PWA
     > https://www.julienpradet.fr/fiches-techniques/pwa-intercepter-les-requetes-http-et-les-mettre-en-cache/
     > https://www.julienpradet.fr/fiches-techniques/pwa-declarer-un-service-worker-et-gerer-son-cycle-de-vie/
--Publier l'application sur le PlayStore
+- Publier l'application sur le PlayStore
     > Utiliser https://appmaker.xyz/pwa-to-apk/ pour publier l'application sur le PlayStore
-
+- Mettre en place une page de contact
+- Mettre en place de l'anti-spam
 # Back-end
 
 Le webscraper produit un fichier JSON qui sert ensuite à peupler la base de données de l'application.
@@ -104,7 +101,8 @@ Il est possible de créer un compte permettant de commenter les terrains et d'en
 
 # TODO
 
-- Réaliser le front-end
+- Faire un test complet de l'application (concurrence, etc ...)
+- ~~Réaliser le front-end~~
 - Ajouter une fonction permettant de lancer le serveur en https en mode production et sur le port 8080 de localhost en mode dev.
 - Rediriger le traffic HTTP vers HTTPS
 - Automatiser le renouvellement du certificat TLS.
@@ -115,15 +113,15 @@ Il est possible de créer un compte permettant de commenter les terrains et d'en
 
 ### Application :
 
-- Liste des terrains parisiens
+- ~~Liste des terrains parisiens~~
 - Notation des terrains
 - Commentaires
-- Responsive
+- ~~Responsive~~
 - Niveau de jeu des terrains
-- Localisation des terrains (Gmap)
+- ~~Localisation des terrains (Gmap)~~
 - Description des terrains
 - Page profil de l'utilisateur
-- Utilisation de JWT pour garder la session active
+- ~~Utilisation de JWT pour garder la session active~~
 - Utilisation de PostgreSQL pour enregistrer les utilisateurs, terrains et commentaires
 - Mise en place de filtres
 - PWA
@@ -132,11 +130,12 @@ Il est possible de créer un compte permettant de commenter les terrains et d'en
 - Réconciliation de données
 - Recherche par arrondissement
 - Agenda des terrains et création de communautés
-- Déployer l'application en https
+- ~~Déployer l'application en https~~
 
 # Améliorations
 - Ajouter de la concurrence
 - Mettre en place un cache
+- Ajouter des nouveaux terrains
 - Ajouter d'autres jeux de données : https://data.iledefrance.fr/explore/dataset/20170419_res_fichesequipementsactivites/information/?disjunctive.actlib
 
 ## Sources de données

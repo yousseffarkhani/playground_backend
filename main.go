@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/yousseffarkhani/playground/backend2/authentication"
+
+	"github.com/yousseffarkhani/playground/backend2/configuration"
 	"github.com/yousseffarkhani/playground/backend2/views"
 
 	"github.com/yousseffarkhani/playground/backend2/geolocationClient"
@@ -18,9 +21,13 @@ import (
 )
 
 const (
-	port       = ":443"
 	dbFileName = "playgrounds.json"
 )
+
+func init() {
+	configuration.LoadEnvVariables()
+	authentication.InitAuthentication()
+}
 
 func main() {
 	database, err := store.NewFromFile(dbFileName)
@@ -31,9 +38,23 @@ func main() {
 	views := views.Initialize()
 	middlewares := middleware.Initialize()
 	svr := server.New(database, geolocationClient, views, middlewares)
-	pwd, _ := os.Getwd()
-	pathToCertFile := os.Getenv("CERTFILE")
-	pathToPrivKey := os.Getenv("PRIVKEY")
+	listenAndServe(svr)
+}
+
+func listenAndServe(svr *server.PlaygroundServer) {
+	var port string
+	if configuration.Variables.ProductionMode {
+		port = ":443"
+		pwd, err := os.Getwd()
+		if err != nil {
+			log.Fatalf("Couldn't get working directory, %s", err)
+		}
+
+		fmt.Println("Listening on port", port)
+		log.Fatal(http.ListenAndServeTLS(port, filepath.Join(pwd, configuration.Variables.TLS.PathToCertFile), filepath.Join(pwd, configuration.Variables.TLS.PathToPrivKey), svr))
+		return
+	}
+	port = ":5000"
 	fmt.Println("Listening on port", port)
-	log.Fatal(http.ListenAndServeTLS(port, filepath.Join(pwd, pathToCertFile), filepath.Join(pwd, pathToPrivKey), svr))
+	log.Fatal(http.ListenAndServe(port, svr))
 }

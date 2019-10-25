@@ -2,33 +2,36 @@ package authentication
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/sessions"
-	"github.com/joho/godotenv"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/facebook"
 	"github.com/markbates/goth/providers/github"
 	"github.com/markbates/goth/providers/google"
+	"github.com/yousseffarkhani/playground/backend2/configuration"
 )
 
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Print("No .env file found")
-	}
+func InitAuthentication() {
+	jwtKey = []byte(configuration.Variables.JWT_SECRET)
+	gothic.Store = sessions.NewCookieStore([]byte(configuration.Variables.SESSION_SECRET))
+	setupGothProviders(configuration.Variables.ProductionMode)
+}
 
-	gothic.Store = sessions.NewCookieStore([]byte(getEnv("SESSION_SECRET", "")))
+func setupGothProviders(productionMode bool) {
+	var callbackBaseURL string
+	if productionMode {
+		callbackBaseURL = "https://playground.yousseffarkhani.website"
+	} else {
+		callbackBaseURL = "http://localhost:5000"
+	}
 	goth.UseProviders(
-		// TODO : change callback URLs
-		facebook.New(getEnv("FACEBOOK_ID", ""), getEnv("FACEBOOK_SECRET", ""), "http://localhost:5000/auth/callback/facebook"),
-		google.New(getEnv("GOOGLE_ID", ""), getEnv("GOOGLE_SECRET", ""), "http://localhost:5000/auth/callback/google"),
-		github.New(getEnv("GITHUB_ID", ""), getEnv("GITHUB_SECRET", ""), "http://localhost:5000/auth/callback/github"),
+		facebook.New(configuration.Variables.FacebookOAuth.ID, configuration.Variables.FacebookOAuth.Secret, fmt.Sprintf("%s/auth/callback/facebook", callbackBaseURL)),
+		google.New(configuration.Variables.GoogleOAuth.ID, configuration.Variables.GoogleOAuth.Secret, fmt.Sprintf("%s/auth/callback/google", callbackBaseURL)),
+		github.New(configuration.Variables.GithubOAuth.ID, configuration.Variables.GithubOAuth.Secret, fmt.Sprintf("%s/auth/callback/github", callbackBaseURL)),
 	)
 }
 
@@ -55,12 +58,12 @@ func UnsetJWTCookie(w http.ResponseWriter) {
 	})
 }
 
-var jwtKey = []byte(getEnv("JWT_SECRET", ""))
-
 type Claims struct {
 	Username string `json:"username"`
 	jwt.StandardClaims
 }
+
+var jwtKey []byte
 
 func generateJWT(username string) (string, time.Time, error) {
 	expirationTime := time.Now().Add(15 * time.Minute)
@@ -90,11 +93,4 @@ func ParseCookie(c *http.Cookie) (*Claims, *jwt.Token, error) {
 		return nil, nil, err
 	}
 	return claims, token, nil
-}
-
-func getEnv(key, defaultVal string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return defaultVal
 }

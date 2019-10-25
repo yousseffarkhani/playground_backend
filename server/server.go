@@ -37,7 +37,7 @@ const (
 	GzipAcceptEncoding = "gzip"
 )
 
-type playgroundServer struct {
+type PlaygroundServer struct {
 	database  PlaygroundStore
 	apiClient store.GeolocationClient
 	http.Handler
@@ -58,8 +58,8 @@ type PlaygroundStore interface {
 	Playground(ID int) (store.Playground, error)
 }
 
-func New(store PlaygroundStore, client store.GeolocationClient, views map[string]View, middlewares map[string]Middleware) *playgroundServer {
-	svr := new(playgroundServer)
+func New(store PlaygroundStore, client store.GeolocationClient, views map[string]View, middlewares map[string]Middleware) *PlaygroundServer {
+	svr := new(PlaygroundServer)
 	svr.database = store
 	svr.apiClient = client
 	svr.views = views
@@ -69,7 +69,7 @@ func New(store PlaygroundStore, client store.GeolocationClient, views map[string
 	return svr
 }
 
-func newRouter(svr *playgroundServer) *mux.Router {
+func newRouter(svr *PlaygroundServer) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/sw.js", serveSW).Methods(http.MethodGet)
 
@@ -77,21 +77,21 @@ func newRouter(svr *playgroundServer) *mux.Router {
 	router.Handle(URLHome, svr.middlewares["refresh"].ThenFunc(svr.homeHandler)).Methods(http.MethodGet)
 	router.Handle(URLPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
 	router.Handle(URLPlayground, svr.middlewares["refresh"].ThenFunc(svr.playgroundHandler)).Methods(http.MethodGet)
-	router.Handle(URLLogin, http.HandlerFunc(svr.loginHandler)).Methods(http.MethodGet)
+	router.HandleFunc(URLLogin, svr.loginHandler).Methods(http.MethodGet)
 	router.HandleFunc(URLLogout, logoutHandler).Methods(http.MethodGet)
 	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
 	// TODO : Put back when main.go is in /cmd file
 	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("../static"))))
 
 	// Authentication
-	router.Handle("/auth/{provider}", http.HandlerFunc(gothic.BeginAuthHandler)).Methods(http.MethodGet)
-	router.Handle("/auth/callback/{provider}", http.HandlerFunc(callbackHandler))
+	router.HandleFunc("/auth/{provider}", gothic.BeginAuthHandler).Methods(http.MethodGet)
+	router.HandleFunc("/auth/callback/{provider}", callbackHandler)
 
 	// API
-	router.Handle(APIPlaygrounds, http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
-	router.Handle(APIPlaygrounds+"/", http.HandlerFunc(svr.getAllPlaygrounds)).Methods(http.MethodGet)
-	router.Handle(APIPlayground, http.HandlerFunc(svr.getPlayground)).Methods(http.MethodGet)
-	router.Handle(APINearestPlaygrounds, http.HandlerFunc(svr.getNearestPlaygrounds)).Methods(http.MethodGet)
+	router.HandleFunc(APIPlaygrounds, svr.getAllPlaygrounds).Methods(http.MethodGet)
+	router.HandleFunc(APIPlaygrounds+"/", svr.getAllPlaygrounds).Methods(http.MethodGet)
+	router.HandleFunc(APIPlayground, svr.getPlayground).Methods(http.MethodGet)
+	router.HandleFunc(APINearestPlaygrounds, svr.getNearestPlaygrounds).Methods(http.MethodGet)
 
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, URLHome, http.StatusFound)
@@ -128,15 +128,15 @@ func serveSW(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "sw.js")
 }
 
-func (p *playgroundServer) homeHandler(w http.ResponseWriter, r *http.Request) {
+func (p *PlaygroundServer) homeHandler(w http.ResponseWriter, r *http.Request) {
 	p.renderView(w, r, "home", nil)
 }
 
-func (p *playgroundServer) playgroundsHandler(w http.ResponseWriter, r *http.Request) {
+func (p *PlaygroundServer) playgroundsHandler(w http.ResponseWriter, r *http.Request) {
 	p.renderView(w, r, "playgrounds", p.database.AllPlaygrounds())
 }
 
-func (p *playgroundServer) playgroundHandler(w http.ResponseWriter, r *http.Request) {
+func (p *PlaygroundServer) playgroundHandler(w http.ResponseWriter, r *http.Request) {
 	ID, err := extractIDFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -150,7 +150,7 @@ func (p *playgroundServer) playgroundHandler(w http.ResponseWriter, r *http.Requ
 	p.renderView(w, r, "playground", playground)
 }
 
-func (p *playgroundServer) loginHandler(w http.ResponseWriter, r *http.Request) {
+func (p *PlaygroundServer) loginHandler(w http.ResponseWriter, r *http.Request) {
 	p.renderView(w, r, "login", nil)
 }
 
@@ -159,7 +159,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, URLHome, http.StatusFound)
 }
 
-func (p *playgroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Request) {
+func (p *PlaygroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Request) {
 	err := encodeToJson(w, p.database.AllPlaygrounds())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -167,7 +167,7 @@ func (p *playgroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (p *playgroundServer) getPlayground(w http.ResponseWriter, r *http.Request) {
+func (p *PlaygroundServer) getPlayground(w http.ResponseWriter, r *http.Request) {
 	ID, err := extractIDFromRequest(r)
 	if err != nil {
 		log.Println(err)
@@ -186,7 +186,7 @@ func (p *playgroundServer) getPlayground(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (p *playgroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.Request) {
+func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.Request) {
 	adress, err := extractAdressFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -242,7 +242,7 @@ type RenderingData struct {
 	Data     interface{}
 }
 
-func (p *playgroundServer) renderView(w http.ResponseWriter, r *http.Request, template string, data interface{}) {
+func (p *PlaygroundServer) renderView(w http.ResponseWriter, r *http.Request, template string, data interface{}) {
 	var username string
 	claims, ok := r.Context().Value("claims").(*authentication.Claims)
 	if ok {
