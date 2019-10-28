@@ -2,9 +2,9 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -29,15 +29,19 @@ const (
 	URLContact       = "/contact"
 	URLAddPlayground = "/playgrounds"
 
-	// Routes
+	// APIs
 	APIPlaygrounds        = "/api/playgrounds"
 	APIPlayground         = APIPlaygrounds + "/{ID}"
 	APINearestPlaygrounds = "/api/nearestPlaygrounds"
+	APIComments           = APIPlayground + "/comments"
+	APIComment            = APIComments + "/{commentID}"
 	// Other
 	JsonContentType    = "application/json"
 	HtmlContentType    = "text/html; charset=utf-8"
 	GzipAcceptEncoding = "gzip"
 )
+
+var ErrPlaygroundNotFound = errors.New("Playground not found")
 
 type PlaygroundServer struct {
 	database  PlaygroundStore
@@ -58,6 +62,7 @@ type View interface {
 type PlaygroundStore interface {
 	AllPlaygrounds() store.Playgrounds
 	Playground(ID int) (store.Playground, error)
+	// AddComment(playgroundID int, comment store.Comment)
 }
 
 func New(store PlaygroundStore, client store.GeolocationClient, views map[string]View, middlewares map[string]Middleware) *PlaygroundServer {
@@ -90,16 +95,67 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	router.HandleFunc("/auth/callback/{provider}", callbackHandler)
 
 	// API
+	// Playground
 	router.HandleFunc(APIPlaygrounds, svr.getAllPlaygrounds).Methods(http.MethodGet)
 	router.HandleFunc(APIPlaygrounds+"/", svr.getAllPlaygrounds).Methods(http.MethodGet)
 	router.HandleFunc(APIPlayground, svr.getPlayground).Methods(http.MethodGet)
 	router.HandleFunc(APINearestPlaygrounds, svr.getNearestPlaygrounds).Methods(http.MethodGet)
+	// Comment
+	router.HandleFunc(APIComments, svr.getAllComments).Methods(http.MethodGet)
+	router.HandleFunc(APIComment, svr.getComment).Methods(http.MethodGet)
+	// router.HandleFunc(APIComments, svr.addComment).Methods(http.MethodPost)
 
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, URLHome, http.StatusFound)
 	}).Methods(http.MethodGet)
 
 	return router
+}
+
+// func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
+// 	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
+// 		r.ParseForm()
+// 		comment := store.Comment{
+// 			Content: r.FormValue("comment"),
+// 			Author:  "test",
+// 			ID:      1,
+// 		}
+// 		p.database.AddComment(playground.ID, comment)
+// 		// playground.AddComment(comment)
+// 		playground.Comments = append(playground.Comments, comment)
+// 		w.WriteHeader(http.StatusAccepted)
+// 	}
+// }
+
+func (p *PlaygroundServer) getAllComments(w http.ResponseWriter, r *http.Request) {
+	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
+		comments := playground.Comments
+		if len(comments) == 0 {
+			comments = store.Comments{}
+		}
+		err = encodeToJson(w, comments)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+}
+
+func (p *PlaygroundServer) getComment(w http.ResponseWriter, r *http.Request) {
+	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
+		commentID, err := extractIDFromRequest(r, "commentID")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		comment, err := playground.FindComment(commentID)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		err = encodeToJson(w, comment)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
 }
 
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -139,17 +195,15 @@ func (p *PlaygroundServer) playgroundsHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (p *PlaygroundServer) playgroundHandler(w http.ResponseWriter, r *http.Request) {
-	ID, err := extractIDFromRequest(r)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	playground, err := p.findPlaygroundFromRequestParameter(w, r)
+	switch err {
+	case ErrPlaygroundNotFound:
+		p.renderView(w, r, "404", nil)
+	case nil:
+		p.renderView(w, r, "playground", playground)
+	default:
+		p.renderView(w, r, "internal error", nil)
 	}
-	playground, err := p.database.Playground(ID)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	p.renderView(w, r, "playground", playground)
 }
 
 func (p *PlaygroundServer) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -165,37 +219,26 @@ func (p *PlaygroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Requ
 	err := encodeToJson(w, p.database.AllPlaygrounds())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 }
 
 func (p *PlaygroundServer) getPlayground(w http.ResponseWriter, r *http.Request) {
-	ID, err := extractIDFromRequest(r)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	playground, err := p.database.Playground(ID)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	err = encodeToJson(w, playground)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
+		err = encodeToJson(w, playground)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 }
 
 func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.Request) {
-	adress, err := extractAdressFromRequest(r)
+	address, err := extractAddressFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	nearestPlaygrounds, err := p.database.AllPlaygrounds().FindNearestPlaygrounds(p.apiClient, adress)
+	nearestPlaygrounds, err := p.database.AllPlaygrounds().FindNearestPlaygrounds(p.apiClient, address)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -210,21 +253,21 @@ func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.
 	}
 }
 
-func extractAdressFromRequest(r *http.Request) (string, error) {
+func extractAddressFromRequest(r *http.Request) (string, error) {
 	queryStrings := r.URL.Query()
-	adress, ok := queryStrings["adress"]
+	address, ok := queryStrings["address"]
 	if !ok {
-		return "", fmt.Errorf("No adress paramater in request, %s", r.URL.String())
+		return "", fmt.Errorf("No address paramater in request, %s", r.URL.String())
 	}
-	if adress[0] == "" {
-		return "", fmt.Errorf("Adress paramater is empty, %s", r.URL.String())
+	if address[0] == "" {
+		return "", fmt.Errorf("Address paramater is empty, %s", r.URL.String())
 	}
-	return adress[0], nil
+	return address[0], nil
 }
 
-func extractIDFromRequest(r *http.Request) (int, error) {
+func extractIDFromRequest(r *http.Request, parameter string) (int, error) {
 	vars := mux.Vars(r)
-	ID, err := strconv.Atoi(vars["ID"])
+	ID, err := strconv.Atoi(vars[parameter])
 	if err != nil {
 		fmt.Println(err)
 		return 0, fmt.Errorf("Couldn't get id from request, %s", r.URL.String())
@@ -264,7 +307,6 @@ func (p *PlaygroundServer) renderView(w http.ResponseWriter, r *http.Request, te
 	if view, ok := p.views[template]; ok {
 		w.Header().Set("Content-Type", HtmlContentType)
 		w.Header().Set("Accept-Encoding", GzipAcceptEncoding)
-		w.WriteHeader(http.StatusOK)
 		err := view.Render(w, r, renderingData)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -272,4 +314,18 @@ func (p *PlaygroundServer) renderView(w http.ResponseWriter, r *http.Request, te
 		return
 	}
 	w.WriteHeader(http.StatusInternalServerError)
+}
+
+func (p *PlaygroundServer) findPlaygroundFromRequestParameter(w http.ResponseWriter, r *http.Request) (store.Playground, error) {
+	ID, err := extractIDFromRequest(r, "ID")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return store.Playground{}, errors.New("Couldn't parse request parameter")
+	}
+	playground, err := p.database.Playground(ID)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return store.Playground{}, ErrPlaygroundNotFound
+	}
+	return playground, nil
 }
