@@ -72,8 +72,11 @@ func TestStore(t *testing.T) {
 
 		assertError(t, got, store.ErrorParsingJson)
 	})
-	// t.Run("Add new playground", func(t *testing.T) {})
-	// t.Run("Returns an error if playground already exists", func(t *testing.T) {})
+	t.Run("Add new playground", func(t *testing.T) {
+		// Assert la casse pour vérifier qu'il n'existe pas déjà
+		// Assert empty playground
+	})
+	t.Run("Returns an error if playground already exists", func(t *testing.T) {})
 }
 
 func assertError(t *testing.T, got, want error) {

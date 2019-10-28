@@ -10,7 +10,7 @@ import (
 
 type stubClient struct{}
 
-func (s stubClient) GetLongAndLat(adress string) (long, lat float64, err error) {
+func (s stubClient) GetLongAndLat(address string) (long, lat float64, err error) {
 	long = 2.372452
 	lat = 48.886835
 	return long, lat, nil

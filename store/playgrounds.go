@@ -10,16 +10,18 @@ import (
 )
 
 type Playground struct {
-	Name           string  `json:"name"`
-	Long           float64 `json:"long"`
-	Lat            float64 `json:"lat"`
-	Adress         string  `json:"adress"`
-	Arrondissement int     `json:"arrondissement"`
-	Dimensions     float64 `json:"dimensions"`
-	Coating        string  `json:"coating"`
-	Open           bool    `json:"open"`
-	Lightning      bool    `json:"lightning"`
-	ID             int
+	Name       string  `json:"name"`
+	Address    string  `json:"address"`
+	PostalCode string  `json:"postal_code"`
+	City       string  `json:"city"`
+	Department string  `json:"department"`
+	Long       float64 `json:"long"`
+	Lat        float64 `json:"lat"`
+	Coating    string  `json:"coating"`
+	Type       string  `json:"type"`
+	Open       bool    `json:"open"`
+	ID         int
+	Comments   Comments
 }
 
 type Playgrounds []Playground
@@ -34,6 +36,7 @@ func NewPlaygrounds(input io.Reader) (Playgrounds, error) {
 }
 
 var ErrorNotFoundPlayground = errors.New("Playground doesn't exist")
+var ErrorNotFoundComment = errors.New("Comment doesn't exist")
 
 func (p Playgrounds) Find(ID int) (Playground, error) {
 	for _, playground := range p {
@@ -43,8 +46,8 @@ func (p Playgrounds) Find(ID int) (Playground, error) {
 	}
 	return Playground{}, ErrorNotFoundPlayground
 }
-func (p Playgrounds) FindNearestPlaygrounds(client GeolocationClient, adress string) (Playgrounds, error) {
-	long, lat, err := client.GetLongAndLat(adress)
+func (p Playgrounds) FindNearestPlaygrounds(client GeolocationClient, address string) (Playgrounds, error) {
+	long, lat, err := client.GetLongAndLat(address)
 	if err != nil {
 		return nil, fmt.Errorf("Couldn't get longitude and lattitude, %s", err)
 	}
@@ -53,7 +56,7 @@ func (p Playgrounds) FindNearestPlaygrounds(client GeolocationClient, adress str
 }
 
 type GeolocationClient interface {
-	GetLongAndLat(adress string) (long, lat float64, err error)
+	GetLongAndLat(address string) (long, lat float64, err error)
 }
 
 func (p Playgrounds) sortByName() {
@@ -66,13 +69,22 @@ func (p Playgrounds) sortByProximity(long, lat float64) Playgrounds {
 	playgroundsSorted := make(Playgrounds, len(p))
 	copy(playgroundsSorted, p)
 	sort.SliceStable(playgroundsSorted, func(i, j int) bool {
-		distanceFromAdressToI := playgroundsSorted[i].calculateSquaredDistanceFrom(long, lat)
-		distanceFromAdressToJ := playgroundsSorted[j].calculateSquaredDistanceFrom(long, lat)
-		return distanceFromAdressToI < distanceFromAdressToJ
+		distanceFromAddressToI := playgroundsSorted[i].calculateSquaredDistanceFrom(long, lat)
+		distanceFromAddressToJ := playgroundsSorted[j].calculateSquaredDistanceFrom(long, lat)
+		return distanceFromAddressToI < distanceFromAddressToJ
 	})
 	return playgroundsSorted
 }
 
 func (p Playground) calculateSquaredDistanceFrom(long, lat float64) float64 {
 	return math.Pow(long-p.Long, 2) + math.Pow(lat-p.Lat, 2)
+}
+
+func (p Playground) FindComment(commentID int) (Comment, error) {
+	for _, comment := range p.Comments {
+		if comment.ID == commentID {
+			return comment, nil
+		}
+	}
+	return Comment{}, ErrorNotFoundComment
 }

@@ -60,6 +60,10 @@ func (s *simplePlaygroundStore) Playground(ID int) (Playground, error) {
 	return playground, nil
 }
 
+func (s *simplePlaygroundStore) NewPlayground(newPlayground Playground) error {
+	return nil
+}
+
 func initializeStoreFile(file *os.File) error {
 	file.Seek(0, 0)
 	fileInfo, err := file.Stat()
