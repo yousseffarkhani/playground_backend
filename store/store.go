@@ -86,9 +86,10 @@ func (s *simplePlaygroundStore) isAlreadyExisting(NewPlayground Playground) bool
 		if strings.ToLower(playground.Address) == strings.ToLower(NewPlayground.Address) {
 			return true
 		}
-		if playground.Long == NewPlayground.Long && playground.Lat == NewPlayground.Lat {
-			return true
-		}
+		// TODO : Add 2 playgrounds (1 for saved playgrounds and 1 for submitted playgrounds waiting to be validated) / Create new method SubmitPlayground and uncomment following part
+		// if playground.Long == NewPlayground.Long && playground.Lat == NewPlayground.Lat {
+		// 	return true
+		// }
 	}
 	return false
 }

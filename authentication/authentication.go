@@ -2,6 +2,7 @@ package authentication
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -76,7 +77,7 @@ func generateJWT(username string) (string, time.Time, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
-		fmt.Printf("Something went wrong: %v", err)
+		log.Printf("Something went wrong: %v", err)
 		return "", time.Time{}, err
 	}
 	return tokenString, expirationTime, nil

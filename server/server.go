@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -26,9 +27,8 @@ const (
 	URLLogout        = "/logout"
 	URLPlaygrounds   = "/playgrounds"
 	URLPlayground    = URLPlaygrounds + "/{ID}"
-	URLNearest       = "/nearest"
-	URLContact       = "/contact"
-	URLAddPlayground = "/playgrounds"
+	URLAddPlayground = URLPlaygrounds + "/add"
+	URLContact       = "/contact" // TODO
 
 	// APIs
 	APIPlaygrounds        = "/api/playgrounds"
@@ -85,6 +85,7 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	// Views
 	router.Handle(URLHome, svr.middlewares["refresh"].ThenFunc(svr.homeHandler)).Methods(http.MethodGet)
 	router.Handle(URLPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
+	router.Handle(URLAddPlayground, svr.middlewares["refresh"].ThenFunc(svr.addPlaygroundHandler)).Methods(http.MethodGet)
 	router.Handle(URLPlayground, svr.middlewares["refresh"].ThenFunc(svr.playgroundHandler)).Methods(http.MethodGet)
 	router.HandleFunc(URLLogin, svr.loginHandler).Methods(http.MethodGet)
 	router.HandleFunc(URLLogout, logoutHandler).Methods(http.MethodGet)
@@ -164,7 +165,7 @@ func (p *PlaygroundServer) getComment(w http.ResponseWriter, r *http.Request) {
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := gothic.CompleteUserAuth(w, r)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -195,6 +196,10 @@ func (p *PlaygroundServer) homeHandler(w http.ResponseWriter, r *http.Request) {
 
 func (p *PlaygroundServer) playgroundsHandler(w http.ResponseWriter, r *http.Request) {
 	p.renderView(w, r, "playgrounds", p.database.AllPlaygrounds())
+}
+
+func (p *PlaygroundServer) addPlaygroundHandler(w http.ResponseWriter, r *http.Request) {
+	p.renderView(w, r, "addPlayground", p.database.AllPlaygrounds())
 }
 
 func (p *PlaygroundServer) playgroundHandler(w http.ResponseWriter, r *http.Request) {
@@ -278,12 +283,12 @@ func (p *PlaygroundServer) addPlayground(w http.ResponseWriter, r *http.Request)
 
 	errorsMap := p.database.NewPlayground(newPlayground)
 	if len(errorsMap) > 0 {
+		log.Println(errorsMap)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	w.WriteHeader(http.StatusAccepted)
-
 }
 
 func extractAddressFromRequest(r *http.Request) (string, error) {
@@ -302,7 +307,7 @@ func extractIDFromRequest(r *http.Request, parameter string) (int, error) {
 	vars := mux.Vars(r)
 	ID, err := strconv.Atoi(vars[parameter])
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return 0, fmt.Errorf("Couldn't get id from request, %s", r.URL.String())
 	}
 	return ID, nil

@@ -1,8 +1,8 @@
 package views
 
 import (
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"path/filepath"
 	"text/template"
@@ -29,6 +29,8 @@ func Initialize() map[string]server.View {
 	views["login"] = newView("main", templateDir+"/login.html")
 	views["404"] = newView("main", templateDir+"/404.html")
 	views["internal error"] = newView("main", templateDir+"/internalError.html")
+	views["addPlayground"] = newView("main", templateDir+"/addPlayground.html")
+
 	return views
 }
 
@@ -44,7 +46,7 @@ func newView(layout string, files ...string) *View {
 func layoutFiles() []string {
 	files, err := filepath.Glob(layoutDir + "/*.html")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	return files
 }

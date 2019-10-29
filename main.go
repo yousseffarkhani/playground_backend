@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -50,11 +49,11 @@ func listenAndServe(svr *server.PlaygroundServer) {
 			log.Fatalf("Couldn't get working directory, %s", err)
 		}
 
-		fmt.Println("Listening on port", port)
+		log.Println("Listening on port", port)
 		log.Fatal(http.ListenAndServeTLS(port, filepath.Join(pwd, configuration.Variables.TLS.PathToCertFile), filepath.Join(pwd, configuration.Variables.TLS.PathToPrivKey), svr))
 		return
 	}
 	port = ":5000"
-	fmt.Println("Listening on port", port)
+	log.Println("Listening on port", port)
 	log.Fatal(http.ListenAndServe(port, svr))
 }

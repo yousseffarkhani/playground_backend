@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -38,11 +38,11 @@ func IsLogged(next http.Handler) http.Handler {
 		ctx := r.Context()
 		c, err := r.Cookie("Token")
 		if err != nil {
-			fmt.Println("From middleware.go", err)
+			log.Println("From middleware.go", err)
 		} else {
 			claims, token, err := authentication.ParseCookie(c)
 			if err != nil || !token.Valid {
-				fmt.Println(err)
+				log.Println(err)
 			} else {
 				ctx = context.WithValue(r.Context(), "claims", claims)
 			}
@@ -58,12 +58,12 @@ func RefreshJWT(next http.Handler) http.Handler {
 		if ok {
 			if time.Unix(claims.ExpiresAt, 0).Sub(time.Now()) < 15*time.Minute {
 				authentication.SetJwtCookie(w, claims.Username)
-				fmt.Println("Refreshed Token")
+				log.Println("Refreshed Token")
 			} else {
-				fmt.Println("Token doesn't need to be refreshed")
+				log.Println("Token doesn't need to be refreshed")
 			}
 		} else {
-			fmt.Println("From RefreshJWT : User not connected")
+			log.Println("From RefreshJWT : User not connected")
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
