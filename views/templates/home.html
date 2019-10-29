@@ -11,9 +11,9 @@
 </h2>
 <div class="input-group">
     <input type="text" class="form-control" placeholder="Ex: 14 Quai de la Seine, 75019 Paris" aria-label=""
-        aria-describedby="basic-addon1" name="adress" id="adressInput">
+        aria-describedby="basic-addon1" name="address" id="addressInput">
     <div class="input-group-append">
-        <button class="btn btn-primary mb-2" type="button" id="adressBtn">Rechercher</button>
+        <button class="btn btn-primary mb-2" type="button" id="addressBtn">Rechercher</button>
     </div>
 </div>
 
@@ -22,15 +22,15 @@
 <script>
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(async function (position) {
-            fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.coords.latitude},${position.coords.longitude}&key={{.GOOGLE_GEOCODING_API_KEY}}`).then(res => res.json()).then(adress => {
-                input.value = adress.results[0].formatted_address;
-                fetchNearestPlaygroundsAndDisplay(adress.results[0].formatted_address)
+            fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.coords.latitude},${position.coords.longitude}&key={{.GOOGLE_GEOCODING_API_KEY}}`).then(res => res.json()).then(address => {
+                input.value = address.results[0].formatted_address;
+                fetchNearestPlaygroundsAndDisplay(address.results[0].formatted_address)
             })
         })
     }
 
-    const submitBtn = document.querySelector('#adressBtn')
-    const input = document.querySelector('#adressInput')
+    const submitBtn = document.querySelector('#addressBtn')
+    const input = document.querySelector('#addressInput')
     const results = document.querySelector('#searchNearestResults')
     submitBtn.addEventListener('click', () => {
         fetchNearestPlaygroundsAndDisplay(input.value)
@@ -42,12 +42,12 @@
         }
     });
 
-    function fetchNearestPlaygroundsAndDisplay(adress) {
-        fetch("/api/nearestPlaygrounds?adress=" + adress).then(res => res.json()).then(playgrounds => {
+    function fetchNearestPlaygroundsAndDisplay(address) {
+        fetch("/api/nearestPlaygrounds?address=" + address).then(res => res.json()).then(playgrounds => {
             console.log(playgrounds)
             if (playgrounds.length === 0) {
                 results.innerHTML = `
-            <h2 class="mt-4 mb-3">Il n'y pas de résultats pour cette adresse</h2>
+            <h2 class="mt-4 mb-3">Il n'y pas de résultats pour cette addresse</h2>
             `;
             } else {
                 results.innerHTML = `
@@ -59,7 +59,7 @@
                     div.innerHTML = `
     <div class="col-md">
         <h4>${playground.name}</h4>
-        <p>${playground.adress}</p>
+        <p>${playground.address}, ${playground.postal_code} ${playground.city}</p>
         <a class="btn btn-primary" href="/playgrounds/${playground.ID}">Plus de détails
             <span class="glyphicon glyphicon-chevron-right"></span>
         </a>

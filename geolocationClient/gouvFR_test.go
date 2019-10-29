@@ -39,7 +39,7 @@ func TestGouvFR(t *testing.T) {
 	})
 }
 
-func assertAdress(t *testing.T, got, want string) {
+func assertAddress(t *testing.T, got, want string) {
 	t.Helper()
 	if got != want {
 		t.Errorf("got : %q, want : %q", got, want)

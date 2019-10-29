@@ -140,6 +140,20 @@ Il est possible de créer un compte permettant de commenter les terrains et d'en
 
 ## Sources de données
 
+Choisir loisir - Entretien et Entrainement
+- Paris - Juillet 2017 : https://data.iledefrance.fr/explore/dataset/recensement_des_equipements_sportifs_a_paris/information/?disjunctive.actlib&sort=-cominsee&refine.actlib=Basket-Ball
+
+
+- Seine-Saint-Denis - Juillet 2017 : https://data.iledefrance.fr/explore/dataset/recensement_des_equipements_sportifs_en_seine-saint-denis/information/?disjunctive.actlib&refine.actlib=Basket-Ball&sort=-cominsee
+- Val-de-Marne - Juillet 2017 : https://data.iledefrance.fr/explore/dataset/recensement_des_equipements_sportifs_dans_le_val-de-marne/information/?disjunctive.actlib
+- Essonne - Juillet 2017 : https://data.iledefrance.fr/explore/dataset/recensement_des_equipements_sportifs_en_essonne/information/?disjunctive.actlib
+- Val-d'Oise - Juillet 2017 : https://data.iledefrance.fr/explore/dataset/recensement_des_equipements_sportifs_dans_le_val-d_oise/information/?disjunctive.actlib
+- Seine-et-Marne - Juillet 2017 : https://data.iledefrance.fr/explore/dataset/recensement_des_equipements_sportifs_en_seine-et-marne/information/?disjunctive.actlib&refine.actlib=Basket-Ball&refine.actnivlib=Loisir+-+Entretien+-+Remise+en+forme&sort=-cominsee
+- Hauts de Seine - Juillet 2017 : https://data.iledefrance.fr/explore/dataset/recensement_des_equipements_sportifs_dans_les_hauts-de-seine/information/?disjunctive.actlib&refine.actlib=Basket-Ball&sort=-cominsee
+- Yvelines - Juillet 2017 : https://data.iledefrance.fr/explore/dataset/recensement_des_equipements_sportifs_dans_les_yvelines/information/?disjunctive.actlib&refine.actlib=Basket-Ball
+https://data.iledefrance.fr/explore/dataset/ensemble-des-equipements-sportifs-dile-de-france/information/
+- Ile de france - mars 2014: https://data.iledefrance.fr/explore/dataset/ensemble-des-equipements-sportifs-de-lile-de-france/table/?refine.eqt_type=Terrain+de+basket-ball&location=8,48.67517,2.41028&basemap=jawg.streets&dataChart=eyJxdWVyaWVzIjpbeyJjb25maWciOnsiZGF0YXNldCI6ImVuc2VtYmxlLWRlcy1lcXVpcGVtZW50cy1zcG9ydGlmcy1kZS1saWxlLWRlLWZyYW5jZSIsIm9wdGlvbnMiOnsicmVmaW5lLmVxdF90eXBlIjoiVGVycmFpbiBkZSBiYXNrZXQtYmFsbCJ9fSwiY2hhcnRzIjpbeyJhbGlnbk1vbnRoIjp0cnVlLCJ0eXBlIjoiY29sdW1uIiwiZnVuYyI6IkFWRyIsInlBeGlzIjoiZXF0X2ZhbV9pZCIsInNjaWVudGlmaWNEaXNwbGF5Ijp0cnVlLCJjb2xvciI6IiNlNzRjM2MifV0sInhBeGlzIjoiaW5zX25vbSIsIm1heHBvaW50cyI6NTAsInNvcnQiOiIifV0sInRpbWVzY2FsZSI6IiIsImRpc3BsYXlMZWdlbmQiOnRydWUsImFsaWduTW9udGgiOnRydWV9
+- France - T4 2017: https://www.data.gouv.fr/fr/datasets/recensement-des-equipements-sportifs-espaces-et-sites-de-pratiques/
+
 - https://www.gralon.net/mairies-france/paris/equipements-sportifs-terrain-de-basket-ball-75056.htm
 - http://www.cartes-2-france.com/activites/750560006/ritz-health-club.php donne accès aux liens https://www.webvilles.net/sports/75056-paris.php
-- https://www.data.gouv.fr/fr/datasets/recensement-des-equipements-sportifs-espaces-et-sites-de-pratiques/

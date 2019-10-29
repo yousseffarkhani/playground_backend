@@ -74,6 +74,11 @@ func (m *mockPlaygroundStore) Playground(ID int) (store.Playground, error) {
 	return m.playgrounds[ID-1], nil
 }
 
+func (m *mockPlaygroundStore) NewPlayground(newPlayground store.Playground) map[string]error {
+	m.playgrounds = append(m.playgrounds, newPlayground)
+	return nil
+}
+
 type mockGeolocationClient struct{}
 
 func (m *mockGeolocationClient) GetLongAndLat(address string) (long, lat float64, err error) {
@@ -120,44 +125,41 @@ func TestAPIs(t *testing.T) {
 					})
 				})
 			}
-			t.Run("Post request to /api/playgrounds returns 400", func(t *testing.T) {
-				// Arrange
-				svr := server.New(nil, nil, nil, dummyMiddlewares)
-
-				// Act
-				req, err := http.NewRequest(http.MethodPost, "/api/playgrounds", nil)
-				if err != nil {
-					t.Fatalf("Couldn't create request, %v", err)
-				}
-				res := httptest.NewRecorder()
-				svr.ServeHTTP(res, req)
-
-				// Assert
-				assertStatusCode(t, res, http.StatusMethodNotAllowed)
-			})
 		})
 		t.Run(server.APIPlayground, func(t *testing.T) {
-			t.Run("Get request to /api/playgrounds/1", func(t *testing.T) {
+			t.Run("GET", func(t *testing.T) {
 				// Act
-				req := test.NewGetRequest(t, server.APIPlaygrounds+"/1")
-				res := httptest.NewRecorder()
-				svr.ServeHTTP(res, req)
+				cases := map[string]store.Playground{
+					server.APIPlaygrounds + "/1": playground1,
+					server.APIPlaygrounds + "/2": playground2,
+				}
+				for URL, want := range cases {
+					t.Run(fmt.Sprintf(" request to %s", URL), func(t *testing.T) {
+						// Act
+						req := test.NewGetRequest(t, URL)
+						res := httptest.NewRecorder()
+						svr.ServeHTTP(res, req)
 
-				// Assert
-				t.Run("Returns status OK", func(t *testing.T) {
-					assertStatusCode(t, res, http.StatusOK)
-				})
-				t.Run("Returns a JSON Content-Type ", func(t *testing.T) {
-					assertHeader(t, res, "Content-Type", server.JsonContentType)
-				})
-				t.Run("Returns gzip Accept-Encoding", func(t *testing.T) {
-					assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
-				})
-				t.Run("Returns an individual playground as a JSON", func(t *testing.T) {
-					var got store.Playground
-					json.NewDecoder(res.Body).Decode(&got)
-					test.AssertPlayground(t, got, playground1)
-				})
+						// Assert
+						t.Run(" returns status OK", func(t *testing.T) {
+							assertStatusCode(t, res, http.StatusOK)
+						})
+						t.Run(" returns a JSON Content-Type ", func(t *testing.T) {
+							assertHeader(t, res, "Content-Type", server.JsonContentType)
+						})
+						t.Run(" returns gzip Accept-Encoding", func(t *testing.T) {
+							assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
+						})
+						t.Run(" returns a playground", func(t *testing.T) {
+							var got store.Playground
+							err := json.NewDecoder(res.Body).Decode(&got)
+							if err != nil {
+								t.Fatalf("Unable to parse input %q into comment, '%v'", res.Body, err)
+							}
+							test.AssertPlayground(t, got, want)
+						})
+					})
+				}
 				t.Run("Returns 404 if playground doesn't exist", func(t *testing.T) {
 					// Act
 					req := test.NewGetRequest(t, server.APIPlaygrounds+"/1000")
@@ -168,36 +170,43 @@ func TestAPIs(t *testing.T) {
 					assertStatusCode(t, res, http.StatusNotFound)
 				})
 			})
-		})
-		t.Run(server.APINearestPlaygrounds, func(t *testing.T) {
-			t.Run("Get request to /api/nearestPlaygrounds", func(t *testing.T) {
-				t.Run("Returns a list of playgrounds ordered by proximity", func(t *testing.T) {
-					req := test.NewGetRequest(t, server.APINearestPlaygrounds+"?address=42 Avenue de Flandre Paris")
+			t.Run("POST", func(t *testing.T) {
+				t.Run(" records a new playground (with white spaces trimmed)", func(t *testing.T) {
+					str := &mockPlaygroundStore{}
+					want := store.Playground{
+						Name:       "test1",
+						Address:    "42 avenue de Flandre",
+						PostalCode: "75019",
+						City:       "Paris",
+						Department: "Paris",
+					}
+					svr := server.New(str, nil, nil, dummyMiddlewares)
+					mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", want.Name, want.Address, want.PostalCode, want.City, want.Department)
+					req := test.NewPostFormRequest(t, server.APIPlaygrounds, mockForm)
 					res := httptest.NewRecorder()
 
 					svr.ServeHTTP(res, req)
 
-					assertStatusCode(t, res, http.StatusOK)
-					assertHeader(t, res, "Content-Type", server.JsonContentType)
-					assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
+					assertStatusCode(t, res, http.StatusAccepted)
 
-					got, err := store.NewPlaygrounds(res.Body)
-					if err != nil {
-						t.Fatalf("Unable to parse response into slice, '%v'", err)
+					if len(str.playgrounds) != 1 {
+						t.Fatalf("Playground wasn't added")
 					}
 
-					test.AssertPlaygrounds(t, got, playgrounds)
+					test.AssertPlayground(t, str.playgrounds[0], want)
 				})
-				t.Run("Returns bad request if no address parameter in query", func(t *testing.T) {
-					req := test.NewGetRequest(t, server.APINearestPlaygrounds+"?test=42 Avenue de Flandre Paris")
-					res := httptest.NewRecorder()
-
-					svr.ServeHTTP(res, req)
-
-					assertStatusCode(t, res, http.StatusBadRequest)
-				})
-				t.Run("Returns bad request if empty address parameter", func(t *testing.T) {
-					req := test.NewGetRequest(t, server.APINearestPlaygrounds+"?address=")
+				t.Run(" returns bad request if there is an empty form value", func(t *testing.T) {
+					str := &mockPlaygroundStore{}
+					want := store.Playground{
+						Name:       "test1",
+						Address:    "42 avenue de Flandre",
+						PostalCode: "",
+						City:       "Paris",
+						Department: "Paris",
+					}
+					svr := server.New(str, nil, nil, dummyMiddlewares)
+					mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", want.Name, want.Address, want.PostalCode, want.City, want.Department)
+					req := test.NewPostFormRequest(t, server.APIPlaygrounds, mockForm)
 					res := httptest.NewRecorder()
 
 					svr.ServeHTTP(res, req)
@@ -205,61 +214,52 @@ func TestAPIs(t *testing.T) {
 					assertStatusCode(t, res, http.StatusBadRequest)
 				})
 			})
-		})
-	})
-	t.Run("Comments APIs : ", func(t *testing.T) {
-		t.Run(server.APIComments, func(t *testing.T) {
-			cases := map[string]store.Comments{
-				"/api/playgrounds/1/comments": store.Comments{comment1, comment2},
-				"/api/playgrounds/2/comments": store.Comments{comment3},
-			}
-			for URL, want := range cases {
-				t.Run(fmt.Sprintf("Get request to %s", URL), func(t *testing.T) {
-					// Act
-					req := test.NewGetRequest(t, URL)
-					res := httptest.NewRecorder()
-					svr.ServeHTTP(res, req)
+			t.Run(server.APINearestPlaygrounds, func(t *testing.T) {
+				t.Run("Get request to /api/nearestPlaygrounds", func(t *testing.T) {
+					t.Run("Returns a list of playgrounds ordered by proximity", func(t *testing.T) {
+						req := test.NewGetRequest(t, server.APINearestPlaygrounds+"?address=42 Avenue de Flandre Paris")
+						res := httptest.NewRecorder()
 
-					// Assert
-					t.Run("returns status OK", func(t *testing.T) {
+						svr.ServeHTTP(res, req)
+
 						assertStatusCode(t, res, http.StatusOK)
-					})
-					t.Run("returns a JSON Content-Type ", func(t *testing.T) {
 						assertHeader(t, res, "Content-Type", server.JsonContentType)
-					})
-					t.Run("returns gzip Accept-Encoding", func(t *testing.T) {
 						assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
-					})
-					t.Run("returns a list of comments", func(t *testing.T) {
-						var got store.Comments
-						err := json.NewDecoder(res.Body).Decode(&got)
+
+						got, err := store.NewPlaygrounds(res.Body)
 						if err != nil {
-							t.Fatalf("Unable to parse input %q into slice, '%v'", res.Body, err)
+							t.Fatalf("Unable to parse response into slice, '%v'", err)
 						}
-						if !reflect.DeepEqual(got, want) {
-							t.Errorf("Got %v, want %v", got, want)
-						}
+
+						test.AssertPlaygrounds(t, got, playgrounds)
+					})
+					t.Run("Returns bad request if no address parameter in query", func(t *testing.T) {
+						req := test.NewGetRequest(t, server.APINearestPlaygrounds+"?test=42 Avenue de Flandre Paris")
+						res := httptest.NewRecorder()
+
+						svr.ServeHTTP(res, req)
+
+						assertStatusCode(t, res, http.StatusBadRequest)
+					})
+					t.Run("Returns bad request if empty address parameter", func(t *testing.T) {
+						req := test.NewGetRequest(t, server.APINearestPlaygrounds+"?address=")
+						res := httptest.NewRecorder()
+
+						svr.ServeHTTP(res, req)
+
+						assertStatusCode(t, res, http.StatusBadRequest)
 					})
 				})
-			}
-			t.Run("Returns 404 if playground doesn't exist", func(t *testing.T) {
-				// Act
-				req := test.NewGetRequest(t, "/api/playgrounds/1000/comments")
-				res := httptest.NewRecorder()
-				svr.ServeHTTP(res, req)
-
-				// Assert
-				assertStatusCode(t, res, http.StatusNotFound)
 			})
 		})
-		t.Run(server.APIComment, func(t *testing.T) {
-			t.Run("GET", func(t *testing.T) {
-				cases := map[string]store.Comment{
-					"/api/playgrounds/1/comments/1": comment1,
-					"/api/playgrounds/1/comments/2": comment2,
+		t.Run("Comments APIs : ", func(t *testing.T) {
+			t.Run(server.APIComments, func(t *testing.T) {
+				cases := map[string]store.Comments{
+					"/api/playgrounds/1/comments": store.Comments{comment1, comment2},
+					"/api/playgrounds/2/comments": store.Comments{comment3},
 				}
 				for URL, want := range cases {
-					t.Run(fmt.Sprintf(" request to %s", URL), func(t *testing.T) {
+					t.Run(fmt.Sprintf("Get request to %s", URL), func(t *testing.T) {
 						// Act
 						req := test.NewGetRequest(t, URL)
 						res := httptest.NewRecorder()
@@ -275,11 +275,11 @@ func TestAPIs(t *testing.T) {
 						t.Run("returns gzip Accept-Encoding", func(t *testing.T) {
 							assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
 						})
-						t.Run("returns a comment", func(t *testing.T) {
-							var got store.Comment
+						t.Run("returns a list of comments", func(t *testing.T) {
+							var got store.Comments
 							err := json.NewDecoder(res.Body).Decode(&got)
 							if err != nil {
-								t.Fatalf("Unable to parse input %q into comment, '%v'", res.Body, err)
+								t.Fatalf("Unable to parse input %q into slice, '%v'", res.Body, err)
 							}
 							if !reflect.DeepEqual(got, want) {
 								t.Errorf("Got %v, want %v", got, want)
@@ -287,108 +287,154 @@ func TestAPIs(t *testing.T) {
 						})
 					})
 				}
-
-				t.Run("Returns 404 if playground or comment doesn't exist", func(t *testing.T) {
+				t.Run("Returns 404 if playground doesn't exist", func(t *testing.T) {
 					// Act
-					cases := []string{
-						"/api/playgrounds/1000/comments/1",
-						"/api/playgrounds/1/comments/1000",
-					}
-					for _, URL := range cases {
-						req := test.NewGetRequest(t, URL)
-						res := httptest.NewRecorder()
-						svr.ServeHTTP(res, req)
-
-						// Assert
-						assertStatusCode(t, res, http.StatusNotFound)
-					}
-				})
-				t.Run("Returns internal server error if query parameters are invalid", func(t *testing.T) {
-					// Act
-					cases := []string{
-						"/api/playgrounds/aa/comments/1",
-						"/api/playgrounds/1/comments/aaa",
-					}
-					for _, URL := range cases {
-						req := test.NewGetRequest(t, URL)
-						res := httptest.NewRecorder()
-						svr.ServeHTTP(res, req)
-
-						// Assert
-						assertStatusCode(t, res, http.StatusInternalServerError)
-					}
-				})
-			})
-			/* t.Run("Post", func(t *testing.T) {
-				t.Run(" records a new comment", func(t *testing.T) {
-					req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", "comment=This is a nice playground")
-					res := httptest.NewRecorder()
-
-					svr.ServeHTTP(res, req)
-
-					assertStatusCode(t, res, http.StatusAccepted)
-					// assertContent
-					// asset add comment called
-					// Assert empty comment
-					// assert author
-					// Assert ID
-					// Input : HTML Form comment
-					// Decode input
-					// Add comment
-					// Add authorization middleware
-				})
-				t.Run(" returns status not found if playground doesn't exist", func(t *testing.T) {
-					req := test.NewPostFormRequest(t, "/api/playgrounds/1000/comments", "comment=This is a nice playground")
+					req := test.NewGetRequest(t, "/api/playgrounds/1000/comments")
 					res := httptest.NewRecorder()
 					svr.ServeHTTP(res, req)
 
+					// Assert
 					assertStatusCode(t, res, http.StatusNotFound)
 				})
-			}) */
-			/* 		t.Run("Delete", func(t *testing.T) {
-				t.Run(" returns status accepted", func(t *testing.T) {
-					req := test.NewGetRequest(t, "/api/playgrounds/1/comments/1/delete")
-					res := httptest.NewRecorder()
-					svr.ServeHTTP(res, req)
-
-					assertStatusCode(t, res, http.StatusAccepted)
-				})
-				t.Run(" returns status bad request (playground or comment doesn't exist)", func(t *testing.T) {
-					cases := []string{
-						"/api/playgrounds/1000/comments/1/delete",
-						"/api/playgrounds/1/comments/1000/delete",
-					}
-					for _, c := range cases {
-						req := test.NewGetRequest(t, c)
-						res := httptest.NewRecorder()
-						svr.ServeHTTP(res, req)
-
-						assertStatusCode(t, res, http.StatusBadRequest)
-					}
-				})
 			})
-			t.Run("Update", func(t *testing.T) {
-				t.Run(" returns status accepted", func(t *testing.T) {
-					req := test.NewGetRequest(t, "/api/playgrounds/1/comments/1/update")
-					res := httptest.NewRecorder()
-					svr.ServeHTTP(res, req)
-
-					assertStatusCode(t, res, http.StatusAccepted)
-				})
-				t.Run(" returns status bad request (playground or comment doesn't exist)", func(t *testing.T) {
-					cases := []string{
-						"/api/playgrounds/1000/comments/1/update",
-						"/api/playgrounds/1/comments/1000/update",
+			t.Run(server.APIComment, func(t *testing.T) {
+				t.Run("GET", func(t *testing.T) {
+					cases := map[string]store.Comment{
+						"/api/playgrounds/1/comments/1": comment1,
+						"/api/playgrounds/1/comments/2": comment2,
 					}
-					for _, c := range cases {
-						req := test.NewGetRequest(t, c)
+					for URL, want := range cases {
+						t.Run(fmt.Sprintf(" request to %s", URL), func(t *testing.T) {
+							// Act
+							req := test.NewGetRequest(t, URL)
+							res := httptest.NewRecorder()
+							svr.ServeHTTP(res, req)
+
+							// Assert
+							t.Run("returns status OK", func(t *testing.T) {
+								assertStatusCode(t, res, http.StatusOK)
+							})
+							t.Run("returns a JSON Content-Type ", func(t *testing.T) {
+								assertHeader(t, res, "Content-Type", server.JsonContentType)
+							})
+							t.Run("returns gzip Accept-Encoding", func(t *testing.T) {
+								assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
+							})
+							t.Run("returns a comment", func(t *testing.T) {
+								var got store.Comment
+								err := json.NewDecoder(res.Body).Decode(&got)
+								if err != nil {
+									t.Fatalf("Unable to parse input %q into comment, '%v'", res.Body, err)
+								}
+								if !reflect.DeepEqual(got, want) {
+									t.Errorf("Got %v, want %v", got, want)
+								}
+							})
+						})
+					}
+
+					t.Run("Returns 404 if playground or comment doesn't exist", func(t *testing.T) {
+						// Act
+						cases := []string{
+							"/api/playgrounds/1000/comments/1",
+							"/api/playgrounds/1/comments/1000",
+						}
+						for _, URL := range cases {
+							req := test.NewGetRequest(t, URL)
+							res := httptest.NewRecorder()
+							svr.ServeHTTP(res, req)
+
+							// Assert
+							assertStatusCode(t, res, http.StatusNotFound)
+						}
+					})
+					t.Run("Returns internal server error if query parameters are invalid", func(t *testing.T) {
+						// Act
+						cases := []string{
+							"/api/playgrounds/aa/comments/1",
+							"/api/playgrounds/1/comments/aaa",
+						}
+						for _, URL := range cases {
+							req := test.NewGetRequest(t, URL)
+							res := httptest.NewRecorder()
+							svr.ServeHTTP(res, req)
+
+							// Assert
+							assertStatusCode(t, res, http.StatusInternalServerError)
+						}
+					})
+				})
+				// t.Run("Post", func(t *testing.T) {
+				// 	t.Run(" records a new comment", func(t *testing.T) {
+				// 		req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", "comment=This is a nice playground")
+				// 		res := httptest.NewRecorder()
+
+				// 		svr.ServeHTTP(res, req)
+
+				// 		assertStatusCode(t, res, http.StatusAccepted)
+				// 		// assertContent
+				// 		// asset add comment called
+				// 		// Assert empty comment
+				// 		// assert author
+				// 		// Assert ID
+				// 		// Input : HTML Form comment
+				// 		// Decode input
+				// 		// Add comment
+				// 		// Add authorization middleware
+				// 	})
+				// 	// t.Run(" returns status not found if playground doesn't exist", func(t *testing.T) {
+				// 	// 	req := test.NewPostFormRequest(t, "/api/playgrounds/1000/comments", "comment=This is a nice playground")
+				// 	// 	res := httptest.NewRecorder()
+				// 	// 	svr.ServeHTTP(res, req)
+
+				// 	// 	assertStatusCode(t, res, http.StatusNotFound)
+				// 	// })
+				// })
+				/* 		t.Run("Delete", func(t *testing.T) {
+					t.Run(" returns status accepted", func(t *testing.T) {
+						req := test.NewGetRequest(t, "/api/playgrounds/1/comments/1/delete")
 						res := httptest.NewRecorder()
 						svr.ServeHTTP(res, req)
 
-						assertStatusCode(t, res, http.StatusBadRequest)
-					}
+						assertStatusCode(t, res, http.StatusAccepted)
+					})
+					t.Run(" returns status bad request (playground or comment doesn't exist)", func(t *testing.T) {
+						cases := []string{
+							"/api/playgrounds/1000/comments/1/delete",
+							"/api/playgrounds/1/comments/1000/delete",
+						}
+						for _, c := range cases {
+							req := test.NewGetRequest(t, c)
+							res := httptest.NewRecorder()
+							svr.ServeHTTP(res, req)
+
+							assertStatusCode(t, res, http.StatusBadRequest)
+						}
+					})
 				})
-			}) */
+				t.Run("Update", func(t *testing.T) {
+					t.Run(" returns status accepted", func(t *testing.T) {
+						req := test.NewGetRequest(t, "/api/playgrounds/1/comments/1/update")
+						res := httptest.NewRecorder()
+						svr.ServeHTTP(res, req)
+
+						assertStatusCode(t, res, http.StatusAccepted)
+					})
+					t.Run(" returns status bad request (playground or comment doesn't exist)", func(t *testing.T) {
+						cases := []string{
+							"/api/playgrounds/1000/comments/1/update",
+							"/api/playgrounds/1/comments/1000/update",
+						}
+						for _, c := range cases {
+							req := test.NewGetRequest(t, c)
+							res := httptest.NewRecorder()
+							svr.ServeHTTP(res, req)
+
+							assertStatusCode(t, res, http.StatusBadRequest)
+						}
+					})
+				}) */
+			})
 		})
 	})
 }
@@ -495,6 +541,7 @@ func (m *mockMiddleware) ThenFunc(finalPage func(http.ResponseWriter, *http.Requ
 	})
 }
 func TestMiddlewares(t *testing.T) {
+	// TODO : Add Authorized middleware
 	configuration.LoadEnvVariables()
 	mockIsLogged := &mockMiddleware{}
 	mockRefreshJWT := mockIsLogged

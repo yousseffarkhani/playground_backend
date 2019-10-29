@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -60,8 +63,62 @@ func (s *simplePlaygroundStore) Playground(ID int) (Playground, error) {
 	return playground, nil
 }
 
-func (s *simplePlaygroundStore) NewPlayground(newPlayground Playground) error {
+func (s *simplePlaygroundStore) NewPlayground(newPlayground Playground) map[string]error {
+	errorsMap := make(map[string]error)
+	errorsMap = verifyCorrectPlaygroundInput(newPlayground)
+	if len(errorsMap) > 0 {
+		return errorsMap
+	}
+	if s.isAlreadyExisting(newPlayground) {
+		errorsMap["Playground"] = errors.New("This playground already exists")
+		return errorsMap
+	}
+	newPlayground.ID = len(s.playgrounds) + 1
+	s.playgrounds = append(s.playgrounds, newPlayground)
 	return nil
+}
+
+func (s *simplePlaygroundStore) isAlreadyExisting(NewPlayground Playground) bool {
+	for _, playground := range s.AllPlaygrounds() {
+		if strings.ToLower(playground.Name) == strings.ToLower(NewPlayground.Name) {
+			return true
+		}
+		if strings.ToLower(playground.Address) == strings.ToLower(NewPlayground.Address) {
+			return true
+		}
+		if playground.Long == NewPlayground.Long && playground.Lat == NewPlayground.Lat {
+			return true
+		}
+	}
+	return false
+}
+
+var ErrEmptyField = errors.New("Empty field")
+
+func verifyCorrectPlaygroundInput(NewPlayground Playground) map[string]error {
+	errorsMap := make(map[string]error)
+	value := reflect.ValueOf(NewPlayground)
+	typeOfData := value.Type()
+	if value.Kind() == reflect.Struct {
+		for i := 0; i < value.NumField(); i++ {
+			fieldName := typeOfData.Field(i).Name
+			fieldValue := value.Field(i).String()
+			if fieldName != "Coating" && fieldName != "Open" && fieldName != "Type" && strings.TrimSpace(fieldValue) == "" {
+				errorsMap[fieldName] = ErrEmptyField
+				continue
+			}
+			if fieldName == "PostalCode" {
+				if _, err := strconv.Atoi(fieldValue); err != nil {
+					errorsMap[fieldName] = errors.New("Postal Code should be a number")
+					continue
+				}
+				if len(fieldValue) != 5 {
+					errorsMap[fieldName] = errors.New("Postal Code should be 5 characters long")
+				}
+			}
+		}
+	}
+	return errorsMap
 }
 
 func initializeStoreFile(file *os.File) error {

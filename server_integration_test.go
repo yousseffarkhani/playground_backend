@@ -65,7 +65,7 @@ func TestPostPlaygroundAndGet(t *testing.T) {
 	t.Run("Get playground", func(t *testing.T) {})
 	t.Run("Returns bad request if playground already exists", func(t *testing.T) {})
 	t.Run("Get all playgrounds returns playgrounds ordered by proximity", func(t *testing.T) {
-		req := test.NewGetRequest(t, server.APINearestPlaygrounds+"?adress=42 avenue de Flandre Paris")
+		req := test.NewGetRequest(t, server.APINearestPlaygrounds+"?address=42 avenue de Flandre Paris")
 		res := httptest.NewRecorder()
 
 		svr.ServeHTTP(res, req)

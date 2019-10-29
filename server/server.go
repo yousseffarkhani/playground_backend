@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/yousseffarkhani/playground/backend2/configuration"
 
@@ -62,6 +63,7 @@ type View interface {
 type PlaygroundStore interface {
 	AllPlaygrounds() store.Playgrounds
 	Playground(ID int) (store.Playground, error)
+	NewPlayground(newPlayground store.Playground) map[string]error
 	// AddComment(playgroundID int, comment store.Comment)
 }
 
@@ -100,6 +102,7 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	router.HandleFunc(APIPlaygrounds+"/", svr.getAllPlaygrounds).Methods(http.MethodGet)
 	router.HandleFunc(APIPlayground, svr.getPlayground).Methods(http.MethodGet)
 	router.HandleFunc(APINearestPlaygrounds, svr.getNearestPlaygrounds).Methods(http.MethodGet)
+	router.HandleFunc(APIPlaygrounds, svr.addPlayground).Methods(http.MethodPost)
 	// Comment
 	router.HandleFunc(APIComments, svr.getAllComments).Methods(http.MethodGet)
 	router.HandleFunc(APIComment, svr.getComment).Methods(http.MethodGet)
@@ -111,21 +114,6 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 
 	return router
 }
-
-// func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
-// 	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
-// 		r.ParseForm()
-// 		comment := store.Comment{
-// 			Content: r.FormValue("comment"),
-// 			Author:  "test",
-// 			ID:      1,
-// 		}
-// 		p.database.AddComment(playground.ID, comment)
-// 		// playground.AddComment(comment)
-// 		playground.Comments = append(playground.Comments, comment)
-// 		w.WriteHeader(http.StatusAccepted)
-// 	}
-// }
 
 func (p *PlaygroundServer) getAllComments(w http.ResponseWriter, r *http.Request) {
 	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
@@ -157,6 +145,21 @@ func (p *PlaygroundServer) getComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
+/* func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
+	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
+		r.ParseForm()
+		comment := store.Comment{
+			Content: r.FormValue("comment"),
+			Author:  "test",
+			ID:      1,
+		}
+		// p.database.AddComment(playground.ID, comment)
+		// playground.AddComment(comment)
+		playground.Comments = append(playground.Comments, comment)
+		w.WriteHeader(http.StatusAccepted)
+	}
+} */
 
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := gothic.CompleteUserAuth(w, r)
@@ -251,6 +254,36 @@ func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func (p *PlaygroundServer) addPlayground(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	formValues := make(map[string]string)
+	for key, field := range r.Form {
+		if value := strings.TrimSpace(strings.Join(field, "")); value != "" {
+			formValues[key] = value
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	newPlayground := store.Playground{
+		Name:       formValues["name"],
+		Address:    formValues["address"],
+		PostalCode: formValues["postal_code"],
+		City:       formValues["city"],
+		Department: formValues["department"],
+	}
+
+	errorsMap := p.database.NewPlayground(newPlayground)
+	if len(errorsMap) > 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+
 }
 
 func extractAddressFromRequest(r *http.Request) (string, error) {

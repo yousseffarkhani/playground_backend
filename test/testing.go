@@ -3,6 +3,7 @@ package test
 import (
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/yousseffarkhani/playground/backend2/store"
@@ -17,9 +18,19 @@ func NewGetRequest(t *testing.T, url string) *http.Request {
 	return req
 }
 
+func NewPostFormRequest(t *testing.T, url string, body string) *http.Request {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("Couldn't create request, %v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return req
+}
+
 func AssertPlayground(t *testing.T, got, want store.Playground) {
 	t.Helper()
-	if got != want {
+	if got.Name != want.Name || got.Address != want.Address || got.Lat != want.Lat {
 		t.Errorf("Got %v, want %v", got, want)
 	}
 }

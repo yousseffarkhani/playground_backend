@@ -27,6 +27,8 @@ func Initialize() map[string]server.View {
 	views["playgrounds"] = newView("main", templateDir+"/playgrounds.html")
 	views["playground"] = newView("main", templateDir+"/playground.html")
 	views["login"] = newView("main", templateDir+"/login.html")
+	views["404"] = newView("main", templateDir+"/404.html")
+	views["internal error"] = newView("main", templateDir+"/internalError.html")
 	return views
 }
 

@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	dbFileName = "playgrounds.json"
+	dbFileName = "playgroundsOpenData.json"
 )
 
 func init() {

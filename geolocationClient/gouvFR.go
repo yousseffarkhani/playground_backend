@@ -16,14 +16,14 @@ func (a *APIGouvFR) defaultify() {
 	}
 }
 
-func (a APIGouvFR) GetLongAndLat(adress string) (float64, float64, error) {
+func (a APIGouvFR) GetLongAndLat(address string) (float64, float64, error) {
 	a.defaultify()
 
-	formattedAdress := strings.Join(strings.Fields(adress), "+")
+	formattedAddress := strings.Join(strings.Fields(address), "+")
 
 	var info GeolocationInfo
 
-	resp, err := http.Get(fmt.Sprintf("%s%s%s", a.ApiBase, formattedAdress, a.ApiSuffix))
+	resp, err := http.Get(fmt.Sprintf("%s%s%s", a.ApiBase, formattedAddress, a.ApiSuffix))
 	if err != nil {
 		return 0, 0, fmt.Errorf("Couldn't get info, %s", err)
 	}
