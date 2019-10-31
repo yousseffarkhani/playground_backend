@@ -22,13 +22,15 @@ import (
 
 const (
 	// Views
-	URLHome          = "/"
-	URLLogin         = "/login"
-	URLLogout        = "/logout"
-	URLPlaygrounds   = "/playgrounds"
-	URLPlayground    = URLPlaygrounds + "/{ID}"
-	URLAddPlayground = URLPlaygrounds + "/add"
-	URLContact       = "/contact" // TODO
+	URLHome                 = "/"
+	URLLogin                = "/login"
+	URLLogout               = "/logout"
+	URLPlaygrounds          = "/playgrounds"
+	URLPlayground           = URLPlaygrounds + "/{ID}"
+	URLSubmitPlayground     = URLPlaygrounds + "/submit"
+	URLSubmittedPlaygrounds = "/submittedPlaygrounds"
+	URLSubmittedPlayground  = URLSubmittedPlaygrounds + "/{ID}"
+	URLContact              = "/contact" // TODO
 
 	// APIs
 	APIPlaygrounds        = "/api/playgrounds"
@@ -42,10 +44,8 @@ const (
 	GzipAcceptEncoding = "gzip"
 )
 
-var ErrPlaygroundNotFound = errors.New("Playground not found")
-
 type PlaygroundServer struct {
-	database  PlaygroundStore
+	database  store.Database
 	apiClient store.GeolocationClient
 	http.Handler
 	views       map[string]View
@@ -60,16 +60,10 @@ type View interface {
 	Render(w io.Writer, r *http.Request, data RenderingData) error
 }
 
-type PlaygroundStore interface {
-	AllPlaygrounds() store.Playgrounds
-	Playground(ID int) (store.Playground, error)
-	NewPlayground(newPlayground store.Playground) map[string]error
-	// AddComment(playgroundID int, comment store.Comment)
-}
-
-func New(store PlaygroundStore, client store.GeolocationClient, views map[string]View, middlewares map[string]Middleware) *PlaygroundServer {
+func New(playgroundStore store.PlaygroundStore, client store.GeolocationClient, views map[string]View, middlewares map[string]Middleware) *PlaygroundServer {
 	svr := new(PlaygroundServer)
-	svr.database = store
+	svr.database.MainPlaygroundStore = playgroundStore
+	svr.database.SubmittedPlaygroundStore = &store.SubmittedPlaygroundStore{}
 	svr.apiClient = client
 	svr.views = views
 	svr.middlewares = middlewares
@@ -85,8 +79,10 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	// Views
 	router.Handle(URLHome, svr.middlewares["refresh"].ThenFunc(svr.homeHandler)).Methods(http.MethodGet)
 	router.Handle(URLPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
-	router.Handle(URLAddPlayground, svr.middlewares["refresh"].ThenFunc(svr.addPlaygroundHandler)).Methods(http.MethodGet)
+	router.Handle(URLSubmitPlayground, svr.middlewares["refresh"].ThenFunc(svr.submitPlaygroundHandler)).Methods(http.MethodGet)
 	router.Handle(URLPlayground, svr.middlewares["refresh"].ThenFunc(svr.playgroundHandler)).Methods(http.MethodGet)
+	router.Handle(URLSubmittedPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.submittedPlaygroundsHandler)).Methods(http.MethodGet)
+	router.Handle(URLSubmittedPlayground, svr.middlewares["refresh"].ThenFunc(svr.submittedPlaygroundHandler)).Methods(http.MethodGet)
 	router.HandleFunc(URLLogin, svr.loginHandler).Methods(http.MethodGet)
 	router.HandleFunc(URLLogout, logoutHandler).Methods(http.MethodGet)
 	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
@@ -103,7 +99,7 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	router.HandleFunc(APIPlaygrounds+"/", svr.getAllPlaygrounds).Methods(http.MethodGet)
 	router.HandleFunc(APIPlayground, svr.getPlayground).Methods(http.MethodGet)
 	router.HandleFunc(APINearestPlaygrounds, svr.getNearestPlaygrounds).Methods(http.MethodGet)
-	router.HandleFunc(APIPlaygrounds, svr.addPlayground).Methods(http.MethodPost)
+	router.HandleFunc(APIPlaygrounds, svr.submitPlayground).Methods(http.MethodPost)
 	// Comment
 	router.HandleFunc(APIComments, svr.getAllComments).Methods(http.MethodGet)
 	router.HandleFunc(APIComment, svr.getComment).Methods(http.MethodGet)
@@ -195,17 +191,39 @@ func (p *PlaygroundServer) homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *PlaygroundServer) playgroundsHandler(w http.ResponseWriter, r *http.Request) {
-	p.renderView(w, r, "playgrounds", p.database.AllPlaygrounds())
+	p.renderView(w, r, "playgrounds", p.database.MainPlaygroundStore.AllPlaygrounds())
 }
 
-func (p *PlaygroundServer) addPlaygroundHandler(w http.ResponseWriter, r *http.Request) {
-	p.renderView(w, r, "addPlayground", p.database.AllPlaygrounds())
+func (p *PlaygroundServer) submittedPlaygroundsHandler(w http.ResponseWriter, r *http.Request) {
+	p.renderView(w, r, "submittedPlaygrounds", p.database.SubmittedPlaygroundStore.AllPlaygrounds())
+}
+
+func (p *PlaygroundServer) submitPlaygroundHandler(w http.ResponseWriter, r *http.Request) {
+	p.renderView(w, r, "submitPlayground", nil)
+}
+
+func (p *PlaygroundServer) submittedPlaygroundHandler(w http.ResponseWriter, r *http.Request) {
+	ID, err := extractIDFromRequest(r, "ID")
+	if err != nil {
+		log.Println("Couldn't parse request parameter")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	playground, err := p.database.SubmittedPlaygroundStore.Playground(ID)
+	switch err {
+	case store.ErrorNotFoundPlayground:
+		p.renderView(w, r, "404", nil)
+	case nil:
+		p.renderView(w, r, "submittedPlayground", playground)
+	default:
+		p.renderView(w, r, "internal error", nil)
+	}
 }
 
 func (p *PlaygroundServer) playgroundHandler(w http.ResponseWriter, r *http.Request) {
 	playground, err := p.findPlaygroundFromRequestParameter(w, r)
 	switch err {
-	case ErrPlaygroundNotFound:
+	case store.ErrorNotFoundPlayground:
 		p.renderView(w, r, "404", nil)
 	case nil:
 		p.renderView(w, r, "playground", playground)
@@ -224,7 +242,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *PlaygroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Request) {
-	err := encodeToJson(w, p.database.AllPlaygrounds())
+	err := encodeToJson(w, p.database.MainPlaygroundStore.AllPlaygrounds())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -246,7 +264,7 @@ func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.
 		return
 	}
 
-	nearestPlaygrounds, err := p.database.AllPlaygrounds().FindNearestPlaygrounds(p.apiClient, address)
+	nearestPlaygrounds, err := p.database.MainPlaygroundStore.AllPlaygrounds().FindNearestPlaygrounds(p.apiClient, address)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -261,7 +279,7 @@ func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.
 	}
 }
 
-func (p *PlaygroundServer) addPlayground(w http.ResponseWriter, r *http.Request) {
+func (p *PlaygroundServer) submitPlayground(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	formValues := make(map[string]string)
 	for key, field := range r.Form {
@@ -281,7 +299,7 @@ func (p *PlaygroundServer) addPlayground(w http.ResponseWriter, r *http.Request)
 		Department: formValues["department"],
 	}
 
-	errorsMap := p.database.NewPlayground(newPlayground)
+	errorsMap := p.database.SubmitPlayground(newPlayground)
 	if len(errorsMap) > 0 {
 		log.Println(errorsMap)
 		w.WriteHeader(http.StatusBadRequest)
@@ -360,10 +378,10 @@ func (p *PlaygroundServer) findPlaygroundFromRequestParameter(w http.ResponseWri
 		w.WriteHeader(http.StatusInternalServerError)
 		return store.Playground{}, errors.New("Couldn't parse request parameter")
 	}
-	playground, err := p.database.Playground(ID)
+	playground, err := p.database.MainPlaygroundStore.Playground(ID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		return store.Playground{}, ErrPlaygroundNotFound
+		return store.Playground{}, store.ErrorNotFoundPlayground
 	}
 	return playground, nil
 }

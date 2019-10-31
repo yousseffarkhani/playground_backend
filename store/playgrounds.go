@@ -9,6 +9,9 @@ import (
 	"sort"
 )
 
+var ErrorNotFoundPlayground = errors.New("Playground doesn't exist")
+var ErrorNotFoundComment = errors.New("Comment doesn't exist")
+
 type Playground struct {
 	Name       string  `json:"name"`
 	Address    string  `json:"address"`
@@ -21,7 +24,9 @@ type Playground struct {
 	Type       string  `json:"type"`
 	Open       bool    `json:"open"`
 	ID         int
-	Comments   Comments
+	// TODO : Date of submission
+	// TODO : Author
+	Comments Comments
 }
 
 type Playgrounds []Playground
@@ -34,9 +39,6 @@ func NewPlaygrounds(input io.Reader) (Playgrounds, error) {
 	}
 	return playgrounds, nil
 }
-
-var ErrorNotFoundPlayground = errors.New("Playground doesn't exist")
-var ErrorNotFoundComment = errors.New("Comment doesn't exist")
 
 func (p Playgrounds) Find(ID int) (Playground, error) {
 	for _, playground := range p {

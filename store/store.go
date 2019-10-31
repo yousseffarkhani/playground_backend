@@ -13,25 +13,41 @@ var (
 	ErrorParsingJson = errors.New("Couldn't parse file into JSON")
 )
 
-type simplePlaygroundStore struct {
+type PlaygroundStore interface {
+	AllPlaygrounds() Playgrounds
+	Playground(ID int) (Playground, error)
+	NewPlayground(newPlayground Playground) map[string]error
+	// AddComment(playgroundID int, comment Comment)
+}
+
+type Database struct {
+	MainPlaygroundStore      PlaygroundStore
+	SubmittedPlaygroundStore *SubmittedPlaygroundStore
+}
+
+type MainPlaygroundStore struct {
 	playgrounds Playgrounds
 }
 
-func NewFromFile(path string) (*simplePlaygroundStore, error) {
+type SubmittedPlaygroundStore struct {
+	playgrounds Playgrounds
+}
+
+func NewFromFile(path string) (*MainPlaygroundStore, error) {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
 		return nil, fmt.Errorf("Problem opening %s, %s", file.Name(), err)
 	}
 
-	database, err := New(file)
+	mainPlaygroundStore, err := New(file)
 	if err != nil {
 		return nil, fmt.Errorf("Problem creating database, %s", err)
 	}
 
-	return database, nil
+	return mainPlaygroundStore, nil
 }
 
-func New(file *os.File) (*simplePlaygroundStore, error) {
+func New(file *os.File) (*MainPlaygroundStore, error) {
 	defer file.Close()
 
 	err := initializeStoreFile(file)
@@ -48,14 +64,20 @@ func New(file *os.File) (*simplePlaygroundStore, error) {
 	for i, _ := range playgrounds {
 		playgrounds[i].ID = i + 1
 	}
-	return &simplePlaygroundStore{playgrounds}, nil
+	return &MainPlaygroundStore{playgrounds: playgrounds}, nil
 }
 
-func (s *simplePlaygroundStore) AllPlaygrounds() Playgrounds {
+func (s *MainPlaygroundStore) AllPlaygrounds() Playgrounds {
+	s.playgrounds.sortByName()
 	return s.playgrounds
 }
 
-func (s *simplePlaygroundStore) Playground(ID int) (Playground, error) {
+func (s *SubmittedPlaygroundStore) AllPlaygrounds() Playgrounds {
+	s.playgrounds.sortByName()
+	return s.playgrounds
+}
+
+func (s *MainPlaygroundStore) Playground(ID int) (Playground, error) {
 	playground, err := s.playgrounds.Find(ID)
 	if err != nil {
 		return Playground{}, ErrorNotFoundPlayground
@@ -63,9 +85,16 @@ func (s *simplePlaygroundStore) Playground(ID int) (Playground, error) {
 	return playground, nil
 }
 
-func (s *simplePlaygroundStore) NewPlayground(newPlayground Playground) map[string]error {
-	errorsMap := make(map[string]error)
-	errorsMap = verifyCorrectPlaygroundInput(newPlayground)
+func (s *SubmittedPlaygroundStore) Playground(ID int) (Playground, error) {
+	playground, err := s.playgrounds.Find(ID)
+	if err != nil {
+		return Playground{}, ErrorNotFoundPlayground
+	}
+	return playground, nil
+}
+
+func (s *MainPlaygroundStore) NewPlayground(newPlayground Playground) map[string]error {
+	errorsMap := verifyCorrectPlaygroundInput(newPlayground)
 	if len(errorsMap) > 0 {
 		return errorsMap
 	}
@@ -78,27 +107,53 @@ func (s *simplePlaygroundStore) NewPlayground(newPlayground Playground) map[stri
 	return nil
 }
 
-func (s *simplePlaygroundStore) isAlreadyExisting(NewPlayground Playground) bool {
+func (d *Database) SubmitPlayground(newPlayground Playground) map[string]error {
+	errorsMap := verifyCorrectPlaygroundInput(newPlayground)
+	if len(errorsMap) > 0 {
+		return errorsMap
+	}
+	if isNameOrAddressAlreadyExisting(newPlayground, d.SubmittedPlaygroundStore.AllPlaygrounds()) {
+		errorsMap["Playground"] = errors.New("This playground already exists")
+		return errorsMap
+	}
+	if isNameOrAddressAlreadyExisting(newPlayground, d.MainPlaygroundStore.AllPlaygrounds()) {
+		errorsMap["Playground"] = errors.New("This playground already exists")
+		return errorsMap
+	}
+	newPlayground.ID = len(d.SubmittedPlaygroundStore.playgrounds) + 1
+	d.SubmittedPlaygroundStore.playgrounds = append(d.SubmittedPlaygroundStore.playgrounds, newPlayground)
+	return nil
+}
+
+func isNameOrAddressAlreadyExisting(newPlayground Playground, playgrounds Playgrounds) bool {
+	for _, playground := range playgrounds {
+		if strings.ToLower(playground.Name) == strings.ToLower(newPlayground.Name) {
+			return true
+		}
+		if strings.ToLower(playground.Address) == strings.ToLower(newPlayground.Address) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *MainPlaygroundStore) isAlreadyExisting(newPlayground Playground) bool {
+	if isNameOrAddressAlreadyExisting(newPlayground, s.AllPlaygrounds()) {
+		return true
+	}
 	for _, playground := range s.AllPlaygrounds() {
-		if strings.ToLower(playground.Name) == strings.ToLower(NewPlayground.Name) {
+		if playground.Long == newPlayground.Long && playground.Lat == newPlayground.Lat {
 			return true
 		}
-		if strings.ToLower(playground.Address) == strings.ToLower(NewPlayground.Address) {
-			return true
-		}
-		// TODO : Add 2 playgrounds (1 for saved playgrounds and 1 for submitted playgrounds waiting to be validated) / Create new method SubmitPlayground and uncomment following part
-		// if playground.Long == NewPlayground.Long && playground.Lat == NewPlayground.Lat {
-		// 	return true
-		// }
 	}
 	return false
 }
 
 var ErrEmptyField = errors.New("Empty field")
 
-func verifyCorrectPlaygroundInput(NewPlayground Playground) map[string]error {
+func verifyCorrectPlaygroundInput(newPlayground Playground) map[string]error {
 	errorsMap := make(map[string]error)
-	value := reflect.ValueOf(NewPlayground)
+	value := reflect.ValueOf(newPlayground)
 	typeOfData := value.Type()
 	if value.Kind() == reflect.Struct {
 		for i := 0; i < value.NumField(); i++ {
