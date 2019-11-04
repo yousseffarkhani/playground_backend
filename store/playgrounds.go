@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"sort"
+	"strings"
 )
 
 var ErrorNotFoundPlayground = errors.New("Playground doesn't exist")
@@ -31,7 +32,17 @@ type Playground struct {
 
 type Playgrounds []Playground
 
-func NewPlaygrounds(input io.Reader) (Playgrounds, error) {
+type Comment struct {
+	ID int
+	// PlaygroundID int
+	Content string
+	Author  string
+	// Date         string // TODO: Ajouter
+}
+
+type Comments []Comment
+
+func NewPlaygroundsFromJSON(input io.Reader) (Playgrounds, error) {
 	var playgrounds Playgrounds
 	err := json.NewDecoder(input).Decode(&playgrounds)
 	if err != nil {
@@ -89,4 +100,19 @@ func (p Playground) FindComment(commentID int) (Comment, error) {
 		}
 	}
 	return Comment{}, ErrorNotFoundComment
+}
+
+func (p *Playground) AddComment(comment Comment) error {
+	content := strings.TrimSpace(comment.Content)
+	author := strings.TrimSpace(comment.Author)
+	if content == "" || author == "" {
+		return ErrEmptyField
+	}
+	newComment := Comment{
+		Content: comment.Content,
+		Author:  comment.Author,
+		ID:      len(p.Comments) + 1, // TODO Add other fields
+	}
+	p.Comments = append(p.Comments, newComment)
+	return nil
 }

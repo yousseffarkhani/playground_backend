@@ -17,12 +17,11 @@ type PlaygroundStore interface {
 	AllPlaygrounds() Playgrounds
 	Playground(ID int) (Playground, error)
 	NewPlayground(newPlayground Playground) map[string]error
-	// AddComment(playgroundID int, comment Comment)
 }
 
-type Database struct {
+type PlaygroundDatabase struct {
 	MainPlaygroundStore      PlaygroundStore
-	SubmittedPlaygroundStore *SubmittedPlaygroundStore
+	SubmittedPlaygroundStore PlaygroundStore
 }
 
 type MainPlaygroundStore struct {
@@ -55,7 +54,7 @@ func New(file *os.File) (*MainPlaygroundStore, error) {
 		return nil, fmt.Errorf("problem initialising db file, %v", err)
 	}
 
-	playgrounds, err := NewPlaygrounds(file)
+	playgrounds, err := NewPlaygroundsFromJSON(file)
 	if err != nil {
 		return nil, ErrorParsingJson
 	}
@@ -107,7 +106,14 @@ func (s *MainPlaygroundStore) NewPlayground(newPlayground Playground) map[string
 	return nil
 }
 
-func (d *Database) SubmitPlayground(newPlayground Playground) map[string]error {
+func (s *SubmittedPlaygroundStore) NewPlayground(newPlayground Playground) map[string]error {
+	newPlayground.ID = len(s.playgrounds) + 1
+	s.playgrounds = append(s.playgrounds, newPlayground)
+
+	return nil
+}
+
+func (d *PlaygroundDatabase) SubmitPlayground(newPlayground Playground) map[string]error {
 	errorsMap := verifyCorrectPlaygroundInput(newPlayground)
 	if len(errorsMap) > 0 {
 		return errorsMap
@@ -120,8 +126,10 @@ func (d *Database) SubmitPlayground(newPlayground Playground) map[string]error {
 		errorsMap["Playground"] = errors.New("This playground already exists")
 		return errorsMap
 	}
-	newPlayground.ID = len(d.SubmittedPlaygroundStore.playgrounds) + 1
-	d.SubmittedPlaygroundStore.playgrounds = append(d.SubmittedPlaygroundStore.playgrounds, newPlayground)
+	errorsMap = d.SubmittedPlaygroundStore.NewPlayground(newPlayground)
+	if len(errorsMap) > 0 {
+		return errorsMap
+	}
 	return nil
 }
 
@@ -147,6 +155,23 @@ func (s *MainPlaygroundStore) isAlreadyExisting(newPlayground Playground) bool {
 		}
 	}
 	return false
+}
+
+func (s *MainPlaygroundStore) AddComment(playgroundID int, newComment Comment) error {
+	// playground, err := s.Playground(playgroundID)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = playground.AddComment(newComment)
+	// if err != nil {
+	// 	return err
+	// }
+	// TODO refaire proprement
+	err := s.playgrounds[playgroundID-1].AddComment(newComment)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var ErrEmptyField = errors.New("Empty field")

@@ -34,18 +34,20 @@ var comment3 = store.Comment{
 }
 
 var playground1 = store.Playground{
-	Name: "test1",
-	Long: 2.36016000,
-	Lat:  48.85320000,
+	Name:    "test1",
+	Address: "42 avenue de Flandre",
+	Long:    2.36016000,
+	Lat:     48.85320000,
 	Comments: store.Comments{
 		comment1,
 		comment2,
 	},
 }
 var playground2 = store.Playground{
-	Name: "test2",
-	Long: 2.31565,
-	Lat:  48.8533,
+	Name:    "test2",
+	Address: "43 avenue de Flandre",
+	Long:    2.31565,
+	Lat:     48.8533,
 	Comments: store.Comments{
 		comment3,
 	},
@@ -116,7 +118,7 @@ func TestAPIs(t *testing.T) {
 						assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
 					})
 					t.Run("returns a list of playgrounds", func(t *testing.T) {
-						got, err := store.NewPlaygrounds(res.Body)
+						got, err := store.NewPlaygroundsFromJSON(res.Body)
 						if err != nil {
 							t.Fatalf("Unable to parse response into slice, '%v'", err)
 						}
@@ -171,16 +173,14 @@ func TestAPIs(t *testing.T) {
 				})
 			})
 			t.Run("POST", func(t *testing.T) {
-	/* 			t.Run(" records a new playground (with white spaces trimmed)", func(t *testing.T) {
-					str := &mockPlaygroundStore{}
+				t.Run(" adds a new playground (with white spaces trimmed) to the submitted playground store", func(t *testing.T) {
 					want := store.Playground{
-						Name:       "test1",
-						Address:    "42 avenue de Flandre",
+						Name:       "test3",
+						Address:    "44 avenue de Flandre",
 						PostalCode: "75019",
 						City:       "Paris",
 						Department: "Paris",
 					}
-					svr := server.New(str, nil, nil, dummyMiddlewares)
 					mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", want.Name, want.Address, want.PostalCode, want.City, want.Department)
 					req := test.NewPostFormRequest(t, server.APIPlaygrounds, mockForm)
 					res := httptest.NewRecorder()
@@ -188,30 +188,69 @@ func TestAPIs(t *testing.T) {
 					svr.ServeHTTP(res, req)
 
 					assertStatusCode(t, res, http.StatusAccepted)
-					// TODO : Not testing right store / SHould create an API to consult submitted playgrounds
-					if len(str.playgrounds) != 1 {
-						t.Fatalf("Playground wasn't added")
-					}
 
-					test.AssertPlayground(t, str.playgrounds[0], want)
-				}) */
-				t.Run(" returns bad request if there is an empty form value", func(t *testing.T) {
-					str := &mockPlaygroundStore{}
-					want := store.Playground{
-						Name:       "test1",
-						Address:    "42 avenue de Flandre",
-						PostalCode: "",
-						City:       "Paris",
-						Department: "Paris",
-					}
-					svr := server.New(str, nil, nil, dummyMiddlewares)
-					mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", want.Name, want.Address, want.PostalCode, want.City, want.Department)
-					req := test.NewPostFormRequest(t, server.APIPlaygrounds, mockForm)
-					res := httptest.NewRecorder()
+					req = test.NewGetRequest(t, server.APISubmittedPlaygrounds)
+					res = httptest.NewRecorder()
 
 					svr.ServeHTTP(res, req)
 
-					assertStatusCode(t, res, http.StatusBadRequest)
+					got, err := store.NewPlaygroundsFromJSON(res.Body)
+					if err != nil {
+						t.Fatalf("Unable to parse response into slice, '%v'", err)
+					}
+
+					test.AssertPlayground(t, got[0], want)
+				})
+				t.Run(" returns bad request", func(t *testing.T) {
+					cases := map[string]store.Playground{
+						" if there is an empty form value": store.Playground{
+							Name:       "test4",
+							Address:    "test",
+							PostalCode: "",
+							City:       "Paris",
+							Department: "Paris",
+						},
+						" if there is already the same name in submitted playgrounds": store.Playground{
+							Name:       "TeSt3",
+							Address:    "test",
+							PostalCode: "75019",
+							City:       "Paris",
+							Department: "Paris",
+						},
+						" if there is already the same address in submitted playgrounds": store.Playground{
+							Name:       "test4",
+							Address:    "44 AVENUE de Flandre",
+							PostalCode: "75019",
+							City:       "Paris",
+							Department: "Paris",
+						},
+						" if there is already the same name in main playgrounds": store.Playground{
+							Name:       "TeSt2",
+							Address:    "test",
+							PostalCode: "75019",
+							City:       "Paris",
+							Department: "Paris",
+						},
+						" if there is already the same address in main playgrounds": store.Playground{
+							Name:       "test4",
+							Address:    "42 AVENUE de Flandre",
+							PostalCode: "75019",
+							City:       "Paris",
+							Department: "Paris",
+						},
+					}
+
+					for description, playground := range cases {
+						t.Run(description, func(t *testing.T) {
+							mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", playground.Name, playground.Address, playground.PostalCode, playground.City, playground.Department)
+							req := test.NewPostFormRequest(t, server.APIPlaygrounds, mockForm)
+							res := httptest.NewRecorder()
+
+							svr.ServeHTTP(res, req)
+
+							assertStatusCode(t, res, http.StatusBadRequest)
+						})
+					}
 				})
 			})
 			t.Run(server.APINearestPlaygrounds, func(t *testing.T) {
@@ -226,7 +265,7 @@ func TestAPIs(t *testing.T) {
 						assertHeader(t, res, "Content-Type", server.JsonContentType)
 						assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
 
-						got, err := store.NewPlaygrounds(res.Body)
+						got, err := store.NewPlaygroundsFromJSON(res.Body)
 						if err != nil {
 							t.Fatalf("Unable to parse response into slice, '%v'", err)
 						}

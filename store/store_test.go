@@ -12,37 +12,20 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	t.Run("Store works with correct file", func(t *testing.T) {
+	t.Run("Store WORKS with correct file", func(t *testing.T) {
 		file, removeFile := createTempFile(t, `[
 		{"Name": "b"},{"Name": "a"} ]`)
 		defer removeFile()
+
 		str, _ := store.New(file)
+
 		playground1 := store.Playground{Name: "a", ID: 1}
 		playground2 := store.Playground{Name: "b", ID: 2}
-		t.Run("Playground returns the right playground", func(t *testing.T) {
+
+		t.Run("Playground RETURNS the right playground", func(t *testing.T) {
 			got, _ := str.Playground(2)
 
 			test.AssertPlayground(t, got, playground2)
-		})
-		t.Run("Playground returns an error if playground doesn't exist", func(t *testing.T) {
-			_, got := str.Playground(0)
-			want := store.ErrorNotFoundPlayground
-
-			assertError(t, got, want)
-
-			_, got = str.Playground(3)
-			want = store.ErrorNotFoundPlayground
-
-			assertError(t, got, want)
-		})
-		t.Run("AllPlaygrounds returns playgrounds SORTED by name", func(t *testing.T) {
-			got := str.AllPlaygrounds()
-			want := store.Playgrounds{
-				playground1,
-				playground2,
-			}
-
-			test.AssertPlaygrounds(t, got, want)
 		})
 		t.Run("New adds IDs to playgrounds starting with 1 and ordered by name", func(t *testing.T) {
 			playground, _ := str.Playground(1)
@@ -53,7 +36,26 @@ func TestStore(t *testing.T) {
 				t.Errorf("got : %d, want : %d", got, want)
 			}
 		})
-		t.Run("Add new playground and increments ID", func(t *testing.T) {
+		t.Run("Playground returns an error if playground doesn't exist", func(t *testing.T) {
+			_, got := str.Playground(0)
+
+			assertError(t, got, store.ErrorNotFoundPlayground)
+
+			_, got = str.Playground(3)
+
+			assertError(t, got, store.ErrorNotFoundPlayground)
+		})
+		t.Run("AllPlaygrounds returns playgrounds SORTED by name", func(t *testing.T) {
+			got := str.AllPlaygrounds()
+			want := store.Playgrounds{
+				playground1,
+				playground2,
+			}
+
+			test.AssertPlaygrounds(t, got, want)
+		})
+
+		t.Run("NewPlayground ADDS a new playground and INCREMENTS ID", func(t *testing.T) {
 			want := store.Playground{
 				Name:       "c",
 				Address:    "c",
@@ -215,7 +217,7 @@ func TestSubmittedPlaygrounds(t *testing.T) {
 	defer removeFile()
 	str, _ := store.New(file)
 	submittedPlaygroundStore := &store.SubmittedPlaygroundStore{}
-	database := store.Database{
+	database := store.PlaygroundDatabase{
 		MainPlaygroundStore:      str,
 		SubmittedPlaygroundStore: submittedPlaygroundStore,
 	}
@@ -238,7 +240,7 @@ func TestSubmittedPlaygrounds(t *testing.T) {
 		newPlayground2,
 	}
 	for index, newPlayground := range cases {
-		t.Run("Submit playground adds a playground and increments ID", func(t *testing.T) {
+		t.Run("Submit playground adds a playground to submitted playgrounds store and increments ID", func(t *testing.T) {
 			errorsMap := database.SubmitPlayground(newPlayground)
 			if len(errorsMap) > 0 {
 				t.Fatalf("There shouldn't be an error, %s", errorsMap)

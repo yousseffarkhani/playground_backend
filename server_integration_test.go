@@ -28,7 +28,7 @@ func TestPostPlaygroundAndGet(t *testing.T) {
 
 		svr.ServeHTTP(res, req)
 
-		got, err := store.NewPlaygrounds(res.Body)
+		got, err := store.NewPlaygroundsFromJSON(res.Body)
 		if err != nil {
 			t.Fatalf("Unable to parse response into slice, '%v'", err)
 		}
@@ -70,7 +70,7 @@ func TestPostPlaygroundAndGet(t *testing.T) {
 
 		svr.ServeHTTP(res, req)
 
-		got, err := store.NewPlaygrounds(res.Body)
+		got, err := store.NewPlaygroundsFromJSON(res.Body)
 		if err != nil {
 			t.Fatalf("Unable to parse response into slice, '%v'", err)
 		}

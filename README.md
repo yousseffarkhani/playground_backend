@@ -61,16 +61,25 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
     1. Si le temps d'expiration du cookie est inférieur à 5 min, réinitialiser le temps d'expiration
 - Intégrer Googlemap
 - Utiliser la géoloc du device pour rechercher les terrains les plus proches
+- Ajouter de nouveaux terrains en étant connecté
+    1. Créer un middleware vérifiant le JWT
+    1. Créer un espace de stockage des nouvelles soumissions
+    1. Créer une page pour visualiser les nouvelles soumissions
+    1. Créer une page pour visualiser individuellement les soumissions. L'utilisateur doit pouvoir modifier les champs et enregistrer ou annuler.
+    1. Bonus : Renseigner automatiquement la longitude et lattitude en fonction de l'adresse
+    > Si le terrain existe déjà renvoyer un statut badrequest
+    > Vérifier la casse des noms de terrains au moment de les ajouter
+- En disposant d'un profil modérateur ou administrateur, accepter les demandes d'ajout de nouveaux terrains
+    1. Ajouter un bouton permettant de confirmer l'ajout d'un terrain
+    1. Création du système de profil
+    1. Mettre en place une API permettant de convertir les terrains soumis en terrains crées
+    1. Enlevé les terrains de la stack une fois crées
 - Commenter les terrains en étant connecté
     1. Mettre en place une BDD pour enregister les commentaires
     1. Mettre en place une API CRUD pour interagir avec les commentaires
     > Vérifier que l'utilisateur est connecté lorsqu'il poste un commentaire
     > Afficher l'input commentaire lorsque l'utilisateur est connecté
-- Ajouter de nouveaux terrains en étant connecté
-    > Si le terrain existe déjà renvoyer un statut badrequest
-    > Vérifier la casse des noms de terrains au moment de les ajouter
 - Disposer d'une fonction de recherche en fonction de certains critères (arrondissement, nom, horaires d'ouverture)
-- En disposant d'un profil modérateur ou administrateur, accepter les demandes d'ajout de nouveaux terrains
     1. Parser le cookie
     1. Si le cookie n'est pas valide, rediriger vers la page de login
         > Ajouter les rôles dans le JWT

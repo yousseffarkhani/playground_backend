@@ -33,11 +33,12 @@ const (
 	URLContact              = "/contact" // TODO
 
 	// APIs
-	APIPlaygrounds        = "/api/playgrounds"
-	APIPlayground         = APIPlaygrounds + "/{ID}"
-	APINearestPlaygrounds = "/api/nearestPlaygrounds"
-	APIComments           = APIPlayground + "/comments"
-	APIComment            = APIComments + "/{commentID}"
+	APIPlaygrounds          = "/api/playgrounds"
+	APIPlayground           = APIPlaygrounds + "/{ID}"
+	APINearestPlaygrounds   = "/api/nearestPlaygrounds"
+	APIComments             = APIPlayground + "/comments"
+	APIComment              = APIComments + "/{commentID}"
+	APISubmittedPlaygrounds = "/api/submittedPlaygrounds"
 	// Other
 	JsonContentType    = "application/json"
 	HtmlContentType    = "text/html; charset=utf-8"
@@ -45,7 +46,7 @@ const (
 )
 
 type PlaygroundServer struct {
-	database  store.Database
+	database  store.PlaygroundDatabase
 	apiClient store.GeolocationClient
 	http.Handler
 	views       map[string]View
@@ -100,10 +101,11 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	router.HandleFunc(APIPlayground, svr.getPlayground).Methods(http.MethodGet)
 	router.HandleFunc(APINearestPlaygrounds, svr.getNearestPlaygrounds).Methods(http.MethodGet)
 	router.HandleFunc(APIPlaygrounds, svr.submitPlayground).Methods(http.MethodPost)
+	router.HandleFunc(APISubmittedPlaygrounds, svr.getAllSubmittedPlaygrounds).Methods(http.MethodGet)
 	// Comment
+	// router.HandleFunc(APIComments, svr.addComment).Methods(http.MethodPost)
 	router.HandleFunc(APIComments, svr.getAllComments).Methods(http.MethodGet)
 	router.HandleFunc(APIComment, svr.getComment).Methods(http.MethodGet)
-	// router.HandleFunc(APIComments, svr.addComment).Methods(http.MethodPost)
 
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, URLHome, http.StatusFound)
@@ -143,19 +145,33 @@ func (p *PlaygroundServer) getComment(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
-	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
-		r.ParseForm()
-		comment := store.Comment{
-			Content: r.FormValue("comment"),
-			Author:  "test",
-			ID:      1,
-		}
-		// p.database.AddComment(playground.ID, comment)
-		// playground.AddComment(comment)
-		playground.Comments = append(playground.Comments, comment)
-		w.WriteHeader(http.StatusAccepted)
+/*
+func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
+	ID, err := extractIDFromRequest(r, "ID")
+	if err != nil {
+		log.Println("Couldn't parse request parameter")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+	err = r.ParseForm()
+	if err != nil {
+		log.Println("Couldn't parse request")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	newComment := store.Comment{
+		Content: r.FormValue("comment"),
+		Author:  "test",
+		ID:      1,
+	}
+	err = p.database.MainPlaygroundStore.AddComment(ID, newComment)
+
+	if err != nil {
+		log.Printf("Problème à l'ajout du commentaire, %s", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
 } */
 
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -243,6 +259,13 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 func (p *PlaygroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Request) {
 	err := encodeToJson(w, p.database.MainPlaygroundStore.AllPlaygrounds())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func (p *PlaygroundServer) getAllSubmittedPlaygrounds(w http.ResponseWriter, r *http.Request) {
+	err := encodeToJson(w, p.database.SubmittedPlaygroundStore.AllPlaygrounds())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
