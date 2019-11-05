@@ -86,12 +86,30 @@
     <div class="form-group row">
         <div class="col-sm-10 offset-sm-2">
             <button type="submit" class="btn btn-primary">Accepter</button>
+            <button type="button" class="btn btn-danger" onclick="test()">Refuser</button>
         </div>
     </div>
 </form>
 
 </br>
 <script>
+    function test() {
+        fetch(`/api/submittedPlaygrounds/{{.Data.ID}}`, {
+            method: "POST"
+        }).then(res => {
+            if (res.status === 202) {
+                resultDiv.classList.add("alert-success");
+                resultDiv.classList.remove("alert-danger");
+                resultDiv.innerHTML = "Terrain supprimé";
+                resetInputValues();
+                return
+            }
+            resultDiv.classList.remove("alert-success");
+            resultDiv.classList.add("alert-danger");
+            resultDiv.innerHTML = "Le terrain n'a pas été supprimé";
+        });
+    }
+
     const resultDiv = document.querySelector("#result")
     const acceptPlaygroundForm = document.getElementById("acceptPlaygroundForm");
     acceptPlaygroundForm.addEventListener("submit", function (e) {
@@ -130,7 +148,6 @@
 
     const navLinks = document.querySelectorAll(".nav-link")
     const navLink = document.querySelector("#submittedPlaygrounds")
-    console.log(navLink)
 
     navLinks.forEach(navLink => {
         navLink.classList.remove("active")

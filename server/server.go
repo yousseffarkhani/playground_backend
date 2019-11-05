@@ -34,12 +34,13 @@ const (
 	URLContact              = "/contact" // TODO
 
 	// APIs
-	APIPlaygrounds          = "/api/playgrounds"
-	APIPlayground           = APIPlaygrounds + "/{ID}"
-	APINearestPlaygrounds   = "/api/nearestPlaygrounds"
-	APIComments             = APIPlayground + "/comments"
-	APIComment              = APIComments + "/{commentID}"
-	APISubmittedPlaygrounds = "/api/submittedPlaygrounds"
+	APIPlaygrounds               = "/api/playgrounds"
+	APIPlayground                = APIPlaygrounds + "/{ID}"
+	APINearestPlaygrounds        = "/api/nearestPlaygrounds"
+	APIComments                  = APIPlayground + "/comments"
+	APIComment                   = APIComments + "/{commentID}"
+	APISubmittedPlaygrounds      = "/api/submittedPlaygrounds"
+	APIDeleteSubmittedPlayground = APISubmittedPlaygrounds + "/{ID}"
 	// Other
 	JsonContentType    = "application/json"
 	HtmlContentType    = "text/html; charset=utf-8"
@@ -106,6 +107,8 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	// POST
 	router.Handle(APISubmittedPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.submitPlayground)).Methods(http.MethodPost)
 	router.Handle(APIPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.addPlayground)).Methods(http.MethodPost)
+	router.Handle(APIDeleteSubmittedPlayground, svr.middlewares["authorized"].ThenFunc(svr.deleteSubmittedPlayground)).Methods(http.MethodPost)
+
 	// Comment
 	// router.HandleFunc(APIComments, svr.addComment).Methods(http.MethodPost)
 	router.HandleFunc(APIComments, svr.getAllComments).Methods(http.MethodGet)
@@ -304,6 +307,16 @@ func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func (p *PlaygroundServer) deleteSubmittedPlayground(w http.ResponseWriter, r *http.Request) {
+	ID, err := extractIDFromRequest(r, "ID")
+	if err != nil {
+		log.Println("Couldn't parse request parameter")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	p.database.SubmittedPlaygroundStore.DeletePlayground(ID)
 }
 
 func (p *PlaygroundServer) addPlayground(w http.ResponseWriter, r *http.Request) {

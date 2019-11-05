@@ -67,9 +67,9 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
     1. Créer une page pour visualiser les nouvelles soumissions
     1. Créer une page pour visualiser individuellement les soumissions. L'utilisateur doit pouvoir modifier les champs et enregistrer ou annuler.
     1. Bonus : Renseigner automatiquement la longitude et lattitude en fonction de l'adresse
-    > Si le terrain existe déjà renvoyer un statut badrequest
+    > Si le terrain existe déjà, renvoyer un statut badrequest
     > Vérifier la casse des noms de terrains au moment de les ajouter
-- En disposant d'un profil modérateur ou administrateur, accepter les demandes d'ajout de nouveaux terrains
+- En disposant d'un profil modérateur ou administrateur, accepter ou refuser les demandes d'ajout de nouveaux terrains
     1. Ajouter un bouton permettant de confirmer l'ajout d'un terrain
     1. Création du système de profil
         1. Parser le cookie
@@ -77,7 +77,7 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
             > Ajouter les rôles dans le JWT
             > Ajouter un middleware d'autorisation d'accès à certaines pages
     1. Mettre en place une API permettant de convertir les terrains soumis en terrains crées
-    1. Enlevé les terrains de la stack une fois crées
+    1. Enlever les terrains de la stack une fois crées
 - Commenter les terrains en étant connecté
     1. Mettre en place une BDD pour enregister les commentaires
     1. Mettre en place une API CRUD pour interagir avec les commentaires
@@ -110,6 +110,7 @@ Il est possible de créer un compte permettant de commenter les terrains et d'en
 
 # TODO
 
+- ~~Bouton supprimer sur les terrains soumis~~
 - Refactorer store.go
 - Ajouter une description aux terrains
 - Faire un test complet de l'application (concurrence, etc ...)

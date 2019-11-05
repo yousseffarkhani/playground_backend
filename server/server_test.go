@@ -175,87 +175,95 @@ func TestAPIs(t *testing.T) {
 					assertStatusCode(t, res, http.StatusNotFound)
 				})
 			})
-			t.Run("POST", func(t *testing.T) {
-				// No testing because username from JWT is needed
-				/* t.Run(" adds a new playground (with white spaces trimmed) to the submitted playground store", func(t *testing.T) {
-					want := store.Playground{
-						Name:       "test3",
-						Address:    "44 avenue de Flandre",
-						PostalCode: "75019",
-						City:       "Paris",
-						Department: "Paris",
-					}
-					mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", want.Name, want.Address, want.PostalCode, want.City, want.Department)
-					req := test.NewPostFormRequest(t, server.APISubmittedPlaygrounds, mockForm)
-					res := httptest.NewRecorder()
-
-					svr.ServeHTTP(res, req)
-
-					assertStatusCode(t, res, http.StatusAccepted)
-
-					req = test.NewGetRequest(t, server.APISubmittedPlaygrounds)
-					res = httptest.NewRecorder()
-
-					svr.ServeHTTP(res, req)
-
-					got, err := store.NewPlaygroundsFromJSON(res.Body)
-					if err != nil {
-						t.Fatalf("Unable to parse response into slice, '%v'", err)
-					}
-
-					test.AssertPlayground(t, got[0], want)
-				}) */
-				/* t.Run(" returns bad request", func(t *testing.T) {
-					cases := map[string]store.Playground{
-						" if there is an empty form value": store.Playground{
-							Name:       "test4",
-							Address:    "test",
-							PostalCode: "",
-							City:       "Paris",
-							Department: "Paris",
-						},
-						" if there is already the same name in submitted playgrounds": store.Playground{
-							Name:       "TeSt3",
-							Address:    "test",
+			t.Run("POST to ", func(t *testing.T) {
+				t.Run(server.APISubmittedPlaygrounds, func(t *testing.T) {
+					// No testing because username from JWT is needed (maybe too much of an integration test ?)
+					/* t.Run(" adds a new playground (with white spaces trimmed) to the submitted playground store", func(t *testing.T) {
+						want := store.Playground{
+							Name:       "test3",
+							Address:    "44 avenue de Flandre",
 							PostalCode: "75019",
 							City:       "Paris",
 							Department: "Paris",
-						},
-						" if there is already the same address in submitted playgrounds": store.Playground{
-							Name:       "test4",
-							Address:    "44 AVENUE de Flandre",
-							PostalCode: "75019",
-							City:       "Paris",
-							Department: "Paris",
-						},
-						" if there is already the same name in main playgrounds": store.Playground{
-							Name:       "TeSt2",
-							Address:    "test",
-							PostalCode: "75019",
-							City:       "Paris",
-							Department: "Paris",
-						},
-						" if there is already the same address in main playgrounds": store.Playground{
-							Name:       "test4",
-							Address:    "42 AVENUE de Flandre",
-							PostalCode: "75019",
-							City:       "Paris",
-							Department: "Paris",
-						},
-					}
+						}
+						mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", want.Name, want.Address, want.PostalCode, want.City, want.Department)
+						req := test.NewPostFormRequest(t, server.APISubmittedPlaygrounds, mockForm)
+						res := httptest.NewRecorder()
 
-					for description, playground := range cases {
-						t.Run(description, func(t *testing.T) {
-							mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", playground.Name, playground.Address, playground.PostalCode, playground.City, playground.Department)
-							req := test.NewPostFormRequest(t, server.APIPlaygrounds, mockForm)
-							res := httptest.NewRecorder()
+						svr.ServeHTTP(res, req)
 
-							svr.ServeHTTP(res, req)
+						assertStatusCode(t, res, http.StatusAccepted)
 
-							assertStatusCode(t, res, http.StatusBadRequest)
-						})
-					}
-				}) */
+						req = test.NewGetRequest(t, server.APISubmittedPlaygrounds)
+						res = httptest.NewRecorder()
+
+						svr.ServeHTTP(res, req)
+
+						got, err := store.NewPlaygroundsFromJSON(res.Body)
+						if err != nil {
+							t.Fatalf("Unable to parse response into slice, '%v'", err)
+						}
+
+						test.AssertPlayground(t, got[0], want)
+					}) */
+					/* t.Run(" returns bad request", func(t *testing.T) {
+						cases := map[string]store.Playground{
+							" if there is an empty form value": store.Playground{
+								Name:       "test4",
+								Address:    "test",
+								PostalCode: "",
+								City:       "Paris",
+								Department: "Paris",
+							},
+							" if there is already the same name in submitted playgrounds": store.Playground{
+								Name:       "TeSt3",
+								Address:    "test",
+								PostalCode: "75019",
+								City:       "Paris",
+								Department: "Paris",
+							},
+							" if there is already the same address in submitted playgrounds": store.Playground{
+								Name:       "test4",
+								Address:    "44 AVENUE de Flandre",
+								PostalCode: "75019",
+								City:       "Paris",
+								Department: "Paris",
+							},
+							" if there is already the same name in main playgrounds": store.Playground{
+								Name:       "TeSt2",
+								Address:    "test",
+								PostalCode: "75019",
+								City:       "Paris",
+								Department: "Paris",
+							},
+							" if there is already the same address in main playgrounds": store.Playground{
+								Name:       "test4",
+								Address:    "42 AVENUE de Flandre",
+								PostalCode: "75019",
+								City:       "Paris",
+								Department: "Paris",
+							},
+						}
+
+						for description, playground := range cases {
+							t.Run(description, func(t *testing.T) {
+								mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", playground.Name, playground.Address, playground.PostalCode, playground.City, playground.Department)
+								req := test.NewPostFormRequest(t, server.APIPlaygrounds, mockForm)
+								res := httptest.NewRecorder()
+
+								svr.ServeHTTP(res, req)
+
+								assertStatusCode(t, res, http.StatusBadRequest)
+							})
+						}
+					}) */
+				})
+
+				t.Run(server.APIDeleteSubmittedPlayground, func(t *testing.T) {
+					// 1. Test to see if p.database.SubmittedPlaygroundStore.DeletePlayground() has been called
+					// 2. Test to see if it returns a StatusInternalServerError
+
+				})
 			})
 			t.Run(server.APINearestPlaygrounds, func(t *testing.T) {
 				t.Run("Get request to /api/nearestPlaygrounds", func(t *testing.T) {
