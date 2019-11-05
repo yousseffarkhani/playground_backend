@@ -81,11 +81,11 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	// Views
 	router.Handle(URLHome, svr.middlewares["refresh"].ThenFunc(svr.homeHandler)).Methods(http.MethodGet)
 	router.Handle(URLPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
-	router.Handle(URLSubmitPlayground, svr.middlewares["refresh"].ThenFunc(svr.submitPlaygroundHandler)).Methods(http.MethodGet)
+	router.Handle(URLSubmitPlayground, svr.middlewares["authorized"].ThenFunc(svr.submitPlaygroundHandler)).Methods(http.MethodGet)
 	router.Handle(URLPlayground, svr.middlewares["refresh"].ThenFunc(svr.playgroundHandler)).Methods(http.MethodGet)
-	router.Handle(URLSubmittedPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.submittedPlaygroundsHandler)).Methods(http.MethodGet)
-	router.Handle(URLSubmittedPlayground, svr.middlewares["refresh"].ThenFunc(svr.submittedPlaygroundHandler)).Methods(http.MethodGet)
-	router.HandleFunc(URLLogin, svr.loginHandler).Methods(http.MethodGet)
+	router.Handle(URLSubmittedPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.submittedPlaygroundsHandler)).Methods(http.MethodGet)
+	router.Handle(URLSubmittedPlayground, svr.middlewares["authorized"].ThenFunc(svr.submittedPlaygroundHandler)).Methods(http.MethodGet)
+	router.Handle(URLLogin, svr.middlewares["isLogged"].ThenFunc(svr.loginHandler)).Methods(http.MethodGet)
 	router.HandleFunc(URLLogout, logoutHandler).Methods(http.MethodGet)
 	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
 	// TODO : Put back when main.go is in /cmd file
@@ -104,8 +104,8 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	router.HandleFunc(APINearestPlaygrounds, svr.getNearestPlaygrounds).Methods(http.MethodGet)
 	router.HandleFunc(APISubmittedPlaygrounds, svr.getAllSubmittedPlaygrounds).Methods(http.MethodGet)
 	// POST
-	router.Handle(APISubmittedPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.submitPlayground)).Methods(http.MethodPost)
-	router.Handle(APIPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.addPlayground)).Methods(http.MethodPost)
+	router.Handle(APISubmittedPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.submitPlayground)).Methods(http.MethodPost)
+	router.Handle(APIPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.addPlayground)).Methods(http.MethodPost)
 	// Comment
 	// router.HandleFunc(APIComments, svr.addComment).Methods(http.MethodPost)
 	router.HandleFunc(APIComments, svr.getAllComments).Methods(http.MethodGet)

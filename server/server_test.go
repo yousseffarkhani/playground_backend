@@ -57,8 +57,9 @@ var playgrounds = store.Playgrounds{
 	playground2,
 }
 var dummyMiddlewares = map[string]server.Middleware{
-	"isLogged": &mockMiddleware{},
-	"refresh":  &mockMiddleware{},
+	"isLogged":   &mockMiddleware{},
+	"refresh":    &mockMiddleware{},
+	"authorized": &mockMiddleware{},
 }
 
 type mockPlaygroundStore struct {
@@ -586,14 +587,27 @@ func TestMiddlewares(t *testing.T) {
 	// TODO : Add Authorized middleware
 	configuration.LoadEnvVariables()
 	mockIsLogged := &mockMiddleware{}
-	mockRefreshJWT := mockIsLogged
+	mockRefreshJWT := &mockMiddleware{}
+	mockIsAuthorized := &mockMiddleware{}
 	middlewares := map[string]server.Middleware{
-		"isLogged": mockIsLogged,
-		"refresh":  mockRefreshJWT,
+		"isLogged":   mockIsLogged,
+		"refresh":    mockRefreshJWT,
+		"authorized": mockIsAuthorized,
 	}
 	str := &mockPlaygroundStore{}
 
 	svr := server.New(str, nil, nil, middlewares)
+
+	t.Run(fmt.Sprintf("isLogged middleware is called on route %q", server.URLLogin), func(t *testing.T) {
+		req := test.NewGetRequest(t, server.URLLogin)
+
+		svr.ServeHTTP(httptest.NewRecorder(), req)
+
+		if mockIsLogged.called != true {
+			t.Errorf("IsLogged middleware hasn't been called")
+		}
+		mockIsLogged.called = false
+	})
 
 	cases := []string{
 		server.URLHome,
@@ -601,15 +615,39 @@ func TestMiddlewares(t *testing.T) {
 		server.URLPlaygrounds + "/1",
 	}
 	for _, c := range cases {
-		t.Run(fmt.Sprintf("isLogged middleware is called on route %q", c), func(t *testing.T) {
+		t.Run(fmt.Sprintf("refresh middleware is called on route %q", c), func(t *testing.T) {
 			req := test.NewGetRequest(t, c)
 
 			svr.ServeHTTP(httptest.NewRecorder(), req)
 
-			if mockIsLogged.called != true {
-				t.Errorf("IsLogged middleware hasn't been called")
+			if mockRefreshJWT.called != true {
+				t.Errorf("RefreshJWT middleware hasn't been called")
 			}
-			mockIsLogged.called = false
+			mockRefreshJWT.called = false
+		})
+	}
+	tests := map[string]string{
+		server.URLSubmitPlayground:            "GET",
+		server.URLSubmittedPlaygrounds:        "GET",
+		server.URLSubmittedPlaygrounds + "/1": "GET",
+		server.APISubmittedPlaygrounds:        "POST",
+		server.APIPlaygrounds:                 "POST",
+	}
+	for url, method := range tests {
+		t.Run(fmt.Sprintf("Authorized middleware is called on route %q", url), func(t *testing.T) {
+			var req *http.Request
+			if method == "GET" {
+				req = test.NewGetRequest(t, url)
+			} else {
+				req = test.NewPostFormRequest(t, url, "")
+			}
+
+			svr.ServeHTTP(httptest.NewRecorder(), req)
+
+			if mockIsAuthorized.called != true {
+				t.Errorf("IsAuthorized middleware hasn't been called")
+			}
+			mockIsAuthorized.called = false
 		})
 	}
 }

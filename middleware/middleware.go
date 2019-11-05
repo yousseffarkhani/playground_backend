@@ -19,12 +19,13 @@ func (m MW) ThenFunc(finalPage func(http.ResponseWriter, *http.Request)) http.Ha
 
 func Initialize() map[string]server.Middleware {
 	middlewares := make(map[string]server.Middleware)
-	middlewares["isLogged"] = Use(IsLogged)
-	middlewares["refresh"] = Use(IsLogged, RefreshJWT)
+	middlewares["isLogged"] = use(isLogged)
+	middlewares["refresh"] = use(isLogged, refreshJWT)
+	middlewares["authorized"] = use(isLogged, refreshJWT, isAuthorized)
 	return middlewares
 }
 
-func Use(m ...MW) MW {
+func use(m ...MW) MW {
 	return func(finalPage http.Handler) http.Handler {
 		for i := len(m) - 1; i >= 0; i-- {
 			finalPage = m[i](finalPage)
@@ -33,7 +34,7 @@ func Use(m ...MW) MW {
 	}
 }
 
-func IsLogged(next http.Handler) http.Handler {
+func isLogged(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		c, err := r.Cookie("Token")
@@ -51,7 +52,7 @@ func IsLogged(next http.Handler) http.Handler {
 	})
 }
 
-func RefreshJWT(next http.Handler) http.Handler {
+func refreshJWT(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		claims, ok := ctx.Value("claims").(*authentication.Claims)
@@ -65,6 +66,20 @@ func RefreshJWT(next http.Handler) http.Handler {
 		} else {
 			log.Println("From RefreshJWT : User not connected")
 		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func isAuthorized(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		_, ok := ctx.Value("claims").(*authentication.Claims)
+		if !ok {
+			log.Println("Access denied")
+			http.Redirect(w, r, server.URLLogin, http.StatusFound)
+			return
+		}
+		log.Println("authorized")
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

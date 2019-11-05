@@ -36,15 +36,15 @@
                     <li class="nav-item">
                         <a class="nav-link" id="playgrounds" href="/playgrounds">Terrains</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="playgrounds" href="/playgrounds/submit">Ajouter un terrain</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="playgrounds" href="/submittedPlaygrounds">Terrains soumis</a>
-                    </li>
                     {{if .Username}}
                     <li class="nav-item">
-                        <a class="nav-link" id="login" href="/logout">Déconnexion</a>
+                        <a class="nav-link" id="submitPlayground" href="/playgrounds/submit">Ajouter un terrain</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="submittedPlaygrounds" href="/submittedPlaygrounds">Terrains soumis</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">Déconnexion</a>
                     </li>
                     {{else}}
                     <li class="nav-item">

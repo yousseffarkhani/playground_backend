@@ -58,20 +58,20 @@
             searchParams.append(pair[0], pair[1]);
         }
 
-        fetch("/api/playgrounds", {
+        fetch("/api/submittedPlaygrounds", {
             method: 'POST',
             body: searchParams,
         }).then(res => {
             if (res.status === 202) {
                 resultDiv.classList.add("alert-success");
                 resultDiv.classList.remove("alert-danger");
-                resultDiv.innerHTML = "Terrain ajouté";
+                resultDiv.innerHTML = "Terrain soumis";
                 resetInputValues();
                 return
             }
             resultDiv.classList.remove("alert-success");
             resultDiv.classList.add("alert-danger");
-            resultDiv.innerHTML = "Le terrain n'a pas été ajouté";
+            resultDiv.innerHTML = "Le terrain n'a pas été soumis";
         })
     })
 
@@ -80,6 +80,15 @@
             button.value = "";
         })
     }
+
+
+    const navLinks = document.querySelectorAll(".nav-link")
+    const navLink = document.querySelector("#submitPlayground")
+
+    navLinks.forEach(navLink => {
+        navLink.classList.remove("active")
+    })
+    navLink.classList.add("active")
 </script>
 
 {{end}}

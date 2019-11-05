@@ -12,7 +12,7 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
     - Réaliser un site utile à terme :-)
 
 # Fonctionnalités (par ordre de priorité)
-- Afficher l'ensemble des terrains de basket parisien
+- ~~Afficher l'ensemble des terrains de basket parisien~~
     - Back-end :
         1. Récupérer le path vers le fichier JSON  contenant les terrains et le parser
         1. Enregistrer les terrains dans une BDD
@@ -24,7 +24,7 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
         1. Mettre en place un static file server
         1. Mettre en place un layout général et un template spécifique à cette page
         1. Récupérer et Afficher la liste des terrains
-- Afficher le détail d'un terrain
+- ~~Afficher le détail d'un terrain~~
     - Back-end :
     > Pré-requis :
     Les terrains sont stockés dans une BDD
@@ -34,18 +34,18 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
     1. Interroger la BDD pour retourner le terrain
     1. Envoyer le terrain à travers une API sous format JSON
         > Faire attention aux HTTP status codes, Content-Type, méthodes HTTP utilisées, Accept-Encoding
-- Renvoyer les terrains par ordre de proximité pour une adresse donnée
+- ~~Renvoyer les terrains par ordre de proximité pour une adresse donnée~~
     1. Récupérer l'adresse
     2. Récupérer la longitude et lattitude de cette adresse
     3. Calculer le delta par rapport à tous les playgrounds
     4. Retourner un tableau de terrains triés par ordre croissant de distance
 
-- Mettre en place l'installation de la PWA
+- ~~Mettre en place l'installation de la PWA~~
     1. Créer le manifest.json
     1. Enregister le Service worker dans main.js
     1. Ajouter le sw.js
     1. Ajouter la pop-up d'installation
-- Se connecter en OpenID et envoyer un JWT Token
+- ~~Se connecter en OpenID et envoyer un JWT Token~~
     1. Mettre en place l'OpenID avec les différents providers
     1. Envoyer la requête aux providers
     1. Récupérer les informations des providers
@@ -53,14 +53,14 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
         > Utiliser Goth pour homogénéiser la gestion des providers
         > Utiliser github.com/dgrijalva/jwt-go pour mettre en place le JWT
         > Mettre les ID client et secret key en tant que variables d'environnement
-- Mettre à jour l'UI en fonction de la présence d'un JWT
-- Déconnexion du compte
+- ~~Mettre à jour l'UI en fonction de la présence d'un JWT~~
+- ~~Déconnexion du compte~~
     1. Invalider le JWT
-- Mettre en place le refresh middleware
+- ~~Mettre en place le refresh middleware~~
     1. Parser le cookie
     1. Si le temps d'expiration du cookie est inférieur à 5 min, réinitialiser le temps d'expiration
-- Intégrer Googlemap
-- Utiliser la géoloc du device pour rechercher les terrains les plus proches
+- ~~Intégrer Googlemap~~
+- ~~Utiliser la géoloc du device pour rechercher les terrains les plus proches~~
 - Ajouter de nouveaux terrains en étant connecté
     1. Créer un middleware vérifiant le JWT
     1. Créer un espace de stockage des nouvelles soumissions
@@ -72,6 +72,10 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
 - En disposant d'un profil modérateur ou administrateur, accepter les demandes d'ajout de nouveaux terrains
     1. Ajouter un bouton permettant de confirmer l'ajout d'un terrain
     1. Création du système de profil
+        1. Parser le cookie
+        1. Si le cookie n'est pas valide, rediriger vers la page de login
+            > Ajouter les rôles dans le JWT
+            > Ajouter un middleware d'autorisation d'accès à certaines pages
     1. Mettre en place une API permettant de convertir les terrains soumis en terrains crées
     1. Enlevé les terrains de la stack une fois crées
 - Commenter les terrains en étant connecté
@@ -79,11 +83,7 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
     1. Mettre en place une API CRUD pour interagir avec les commentaires
     > Vérifier que l'utilisateur est connecté lorsqu'il poste un commentaire
     > Afficher l'input commentaire lorsque l'utilisateur est connecté
-- Disposer d'une fonction de recherche en fonction de certains critères (arrondissement, nom, horaires d'ouverture)
-    1. Parser le cookie
-    1. Si le cookie n'est pas valide, rediriger vers la page de login
-        > Ajouter les rôles dans le JWT
-        > Ajouter un middleware d'autorisation d'accès à certaines pages
+- Disposer d'une fonction de recherche en fonction de certains critères sur les pages de soumissions et terrains (arrondissement, nom, horaires d'ouverture)
 - Afficher l'itinéraire (à pied, en voiture, le meilleur transport)
 - Pouvoir noter les terrains en étant connecté
 - Mettre en place des évènements et un calendrier pour chaque terrain (pour que des joueurs puisse convenir sur un horaire de RDV)
@@ -110,6 +110,8 @@ Il est possible de créer un compte permettant de commenter les terrains et d'en
 
 # TODO
 
+- Refactorer store.go
+- Ajouter une description aux terrains
 - Faire un test complet de l'application (concurrence, etc ...)
 - ~~Réaliser le front-end~~
 - Ajouter une fonction permettant de lancer le serveur en https en mode production et sur le port 8080 de localhost en mode dev.
