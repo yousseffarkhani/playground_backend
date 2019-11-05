@@ -16,7 +16,8 @@ var (
 type PlaygroundStore interface {
 	AllPlaygrounds() Playgrounds
 	Playground(ID int) (Playground, error)
-	NewPlayground(newPlayground Playground) map[string]error
+	NewPlayground(newPlayground Playground)
+	DeletePlayground(ID int)
 }
 
 type PlaygroundDatabase struct {
@@ -92,25 +93,28 @@ func (s *SubmittedPlaygroundStore) Playground(ID int) (Playground, error) {
 	return playground, nil
 }
 
-func (s *MainPlaygroundStore) NewPlayground(newPlayground Playground) map[string]error {
-	errorsMap := verifyCorrectPlaygroundInput(newPlayground)
-	if len(errorsMap) > 0 {
-		return errorsMap
-	}
-	if s.isAlreadyExisting(newPlayground) {
-		errorsMap["Playground"] = errors.New("This playground already exists")
-		return errorsMap
-	}
+func (s *MainPlaygroundStore) NewPlayground(newPlayground Playground) {
 	newPlayground.ID = len(s.playgrounds) + 1
 	s.playgrounds = append(s.playgrounds, newPlayground)
-	return nil
 }
 
-func (s *SubmittedPlaygroundStore) NewPlayground(newPlayground Playground) map[string]error {
+func (s *SubmittedPlaygroundStore) NewPlayground(newPlayground Playground) {
 	newPlayground.ID = len(s.playgrounds) + 1
 	s.playgrounds = append(s.playgrounds, newPlayground)
+}
 
-	return nil
+func (s *MainPlaygroundStore) DeletePlayground(ID int) {
+	// TODO
+}
+
+func (s *SubmittedPlaygroundStore) DeletePlayground(ID int) {
+	for index, playground := range s.playgrounds {
+		if playground.ID == ID {
+			s.playgrounds = append(s.playgrounds[:index], s.playgrounds[index+1:]...)
+			break
+		}
+		// Refaire le système d'ID sinon il y a une possibilité d'effacement de playground
+	}
 }
 
 func (d *PlaygroundDatabase) SubmitPlayground(newPlayground Playground) map[string]error {
@@ -126,10 +130,30 @@ func (d *PlaygroundDatabase) SubmitPlayground(newPlayground Playground) map[stri
 		errorsMap["Playground"] = errors.New("This playground already exists")
 		return errorsMap
 	}
-	errorsMap = d.SubmittedPlaygroundStore.NewPlayground(newPlayground)
+	d.SubmittedPlaygroundStore.NewPlayground(newPlayground)
+	return nil
+}
+
+func (d *PlaygroundDatabase) AddPlayground(newPlayground Playground, submittedPlaygroundID int) map[string]error {
+	errorsMap := verifyCorrectPlaygroundInput(newPlayground)
 	if len(errorsMap) > 0 {
 		return errorsMap
 	}
+	submittedPlayground, err := d.SubmittedPlaygroundStore.Playground(submittedPlaygroundID)
+	if err != nil {
+		errorsMap["Playground"] = errors.New(err.Error())
+		return errorsMap
+	}
+	if submittedPlayground.Name != newPlayground.Name {
+		errorsMap["Playground"] = errors.New("Name and ID doesn't match")
+		return errorsMap
+	}
+	if isAlreadyExisting(newPlayground, d.MainPlaygroundStore.AllPlaygrounds()) {
+		errorsMap["Playground"] = errors.New("This playground already exists")
+		return errorsMap
+	}
+	d.MainPlaygroundStore.NewPlayground(newPlayground)
+	d.SubmittedPlaygroundStore.DeletePlayground(submittedPlaygroundID)
 	return nil
 }
 
@@ -145,11 +169,11 @@ func isNameOrAddressAlreadyExisting(newPlayground Playground, playgrounds Playgr
 	return false
 }
 
-func (s *MainPlaygroundStore) isAlreadyExisting(newPlayground Playground) bool {
-	if isNameOrAddressAlreadyExisting(newPlayground, s.AllPlaygrounds()) {
+func isAlreadyExisting(newPlayground Playground, playgrounds Playgrounds) bool {
+	if isNameOrAddressAlreadyExisting(newPlayground, playgrounds) {
 		return true
 	}
-	for _, playground := range s.AllPlaygrounds() {
+	for _, playground := range playgrounds {
 		if playground.Long == newPlayground.Long && playground.Lat == newPlayground.Lat {
 			return true
 		}

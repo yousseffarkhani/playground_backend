@@ -8,26 +8,27 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"time"
 )
 
 var ErrorNotFoundPlayground = errors.New("Playground doesn't exist")
 var ErrorNotFoundComment = errors.New("Comment doesn't exist")
 
 type Playground struct {
-	Name       string  `json:"name"`
-	Address    string  `json:"address"`
-	PostalCode string  `json:"postal_code"`
-	City       string  `json:"city"`
-	Department string  `json:"department"`
-	Long       float64 `json:"long"`
-	Lat        float64 `json:"lat"`
-	Coating    string  `json:"coating"`
-	Type       string  `json:"type"`
-	Open       bool    `json:"open"`
-	ID         int
-	// TODO : Date of submission
-	// TODO : Author
-	Comments Comments
+	Name             string  `json:"name"`
+	Address          string  `json:"address"`
+	PostalCode       string  `json:"postal_code"`
+	City             string  `json:"city"`
+	Department       string  `json:"department"`
+	Long             float64 `json:"long"`
+	Lat              float64 `json:"lat"`
+	Coating          string  `json:"coating"`
+	Type             string  `json:"type"`
+	Open             bool    `json:"open"`
+	ID               int
+	Author           string
+	TimeOfSubmission time.Time
+	Comments         Comments
 }
 
 type Playgrounds []Playground
@@ -74,7 +75,7 @@ type GeolocationClient interface {
 
 func (p Playgrounds) sortByName() {
 	sort.Slice(p, func(i, j int) bool {
-		return p[i].Name < p[j].Name
+		return strings.ToLower(p[i].Name) < strings.ToLower(p[j].Name)
 	})
 }
 

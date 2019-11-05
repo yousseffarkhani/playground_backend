@@ -11,73 +11,111 @@ import (
 	"github.com/yousseffarkhani/playground/backend2/store"
 )
 
-func TestStore(t *testing.T) {
-	t.Run("Store WORKS with correct file", func(t *testing.T) {
-		file, removeFile := createTempFile(t, `[
-		{"Name": "b"},{"Name": "a"} ]`)
-		defer removeFile()
+func TestPlaygroundDatabase(t *testing.T) {
+	submittedPlaygroundStore := &store.SubmittedPlaygroundStore{}
+	file, removeFile := createTempFile(t, `[
+		{"Name": "aaaa", "Address": "aaaa"}]`)
+	defer removeFile()
+	str, _ := store.New(file)
+	database := store.PlaygroundDatabase{
+		MainPlaygroundStore:      str,
+		SubmittedPlaygroundStore: submittedPlaygroundStore,
+	}
 
-		str, _ := store.New(file)
+	newPlayground1 := store.Playground{
+		Name:       "bbbb",
+		Address:    "bbbb",
+		PostalCode: "75001",
+		City:       "b",
+		Department: "b",
+		Author:     "Youssef",
+	}
+	newPlayground2 := store.Playground{
+		Name:       "Cccc",
+		Address:    "cccc",
+		PostalCode: "75001",
+		City:       "c",
+		Department: "c",
+		Author:     "Youssef",
+	}
+	newPlayground3 := store.Playground{
+		Name:       "DdDD",
+		Address:    "dddD",
+		PostalCode: "75019",
+		City:       "Paris",
+		Department: "Paris",
+		Author:     "Youssef",
+	}
+	t.Run("Playground returns an error if playground doesn't exist", func(t *testing.T) {
+		_, got := str.Playground(2)
 
-		playground1 := store.Playground{Name: "a", ID: 1}
-		playground2 := store.Playground{Name: "b", ID: 2}
+		assertError(t, got, store.ErrorNotFoundPlayground)
+	})
+	t.Run("Submit playground", func(t *testing.T) {
+		cases := []store.Playground{
+			newPlayground1,
+			newPlayground2,
+			newPlayground3,
+		}
+		for index, newPlayground := range cases {
+			t.Run(" adds a playground to submitted playgrounds store and increments ID", func(t *testing.T) {
+				errorsMap := database.SubmitPlayground(newPlayground)
+				if len(errorsMap) > 0 {
+					t.Fatalf("There shouldn't be an error, %s", errorsMap)
+				}
 
-		t.Run("Playground RETURNS the right playground", func(t *testing.T) {
-			got, _ := str.Playground(2)
+				playgroundSubmitted, err := database.SubmittedPlaygroundStore.Playground(index + 1)
+				if err != nil {
+					t.Fatalf("There shouldn't be an error, %s", err)
+				}
 
-			test.AssertPlayground(t, got, playground2)
-		})
-		t.Run("New adds IDs to playgrounds starting with 1 and ordered by name", func(t *testing.T) {
-			playground, _ := str.Playground(1)
-			got := playground.ID
-			want := playground1.ID
+				test.AssertPlayground(t, playgroundSubmitted, newPlayground)
+			})
+		}
 
-			if got != want {
-				t.Errorf("got : %d, want : %d", got, want)
+		t.Run(" returns an error if playground already exists in main store or submitted playgrounds store (same name / same address)", func(t *testing.T) {
+			cases := map[string]store.Playground{
+				"same name (Capitalized)": store.Playground{
+					Name:       strings.ToUpper(newPlayground1.Name),
+					Address:    "test",
+					PostalCode: "75019",
+					City:       "Paris",
+					Department: "Paris",
+					Author:     "Youssef",
+				},
+				"same address": store.Playground{
+					Name:       "test",
+					Address:    strings.ToUpper(newPlayground1.Address),
+					PostalCode: "75019",
+					City:       "Paris",
+					Department: "Paris",
+					Author:     "Youssef",
+				},
+				"Existing playground name in main store": store.Playground{
+					Name:       "AaaA",
+					Address:    "test",
+					PostalCode: "75019",
+					City:       "Paris",
+					Department: "Paris",
+					Author:     "Youssef",
+				},
+				"Existing playground address in main store": store.Playground{
+					Name:       "test",
+					Address:    "AAAA",
+					PostalCode: "75019",
+					City:       "Paris",
+					Department: "Paris",
+					Author:     "Youssef",
+				},
+			}
+			for errorDescription, playground := range cases {
+				err := database.SubmitPlayground(playground)
+				if err == nil {
+					t.Errorf("There should be an error, %q", errorDescription)
+				}
 			}
 		})
-		t.Run("Playground returns an error if playground doesn't exist", func(t *testing.T) {
-			_, got := str.Playground(0)
 
-			assertError(t, got, store.ErrorNotFoundPlayground)
-
-			_, got = str.Playground(3)
-
-			assertError(t, got, store.ErrorNotFoundPlayground)
-		})
-		t.Run("AllPlaygrounds returns playgrounds SORTED by name", func(t *testing.T) {
-			got := str.AllPlaygrounds()
-			want := store.Playgrounds{
-				playground1,
-				playground2,
-			}
-
-			test.AssertPlaygrounds(t, got, want)
-		})
-
-		t.Run("NewPlayground ADDS a new playground and INCREMENTS ID", func(t *testing.T) {
-			want := store.Playground{
-				Name:       "c",
-				Address:    "c",
-				PostalCode: "75001",
-				City:       "Paris",
-				Department: "Paris",
-				Long:       2,
-				Lat:        2,
-			}
-			errorsMap := str.NewPlayground(want)
-			if len(errorsMap) > 0 {
-				t.Fatalf("Couldn't add playground, %v", errorsMap)
-			}
-
-			got, err := str.Playground(3)
-			if err != nil {
-				t.Fatalf("There shouldn't be an error, %s", err)
-			}
-
-			test.AssertPlayground(t, got, want)
-
-		})
 		t.Run("Returns an error if a field is empty and postal code is not a number or less than 5 numbers", func(t *testing.T) {
 			cases := store.Playgrounds{
 				store.Playground{
@@ -89,7 +127,7 @@ func TestStore(t *testing.T) {
 				},
 				store.Playground{
 					Name:       "test",
-					Address:    "",
+					Address:    "  ",
 					PostalCode: "75001",
 					City:       "Paris",
 					Department: "Paris",
@@ -97,7 +135,7 @@ func TestStore(t *testing.T) {
 				store.Playground{
 					Name:       "test",
 					Address:    "test",
-					PostalCode: "",
+					PostalCode: "   ",
 					City:       "Paris",
 					Department: "Paris",
 				},
@@ -119,7 +157,7 @@ func TestStore(t *testing.T) {
 					Name:       "test",
 					Address:    "test",
 					PostalCode: "75555",
-					City:       "",
+					City:       "   ",
 					Department: "Paris",
 				},
 				store.Playground{
@@ -127,71 +165,130 @@ func TestStore(t *testing.T) {
 					Address:    "test",
 					PostalCode: "75555",
 					City:       "Paris",
-					Department: "",
+					Department: "  ",
 				},
 			}
 			for _, playground := range cases {
-				err := str.NewPlayground(playground)
+				err := database.SubmitPlayground(playground)
 
 				if err == nil {
 					t.Errorf("There should be an error : %+v", playground)
 				}
 			}
 		})
-		t.Run("Returns an error if playground already exists (same name / same address / same long and lat)", func(t *testing.T) {
-			playground3 := store.Playground{
-				Name:       "Gymnase de test",
-				Address:    "2 avenue de flandre",
-				PostalCode: "75019",
-				City:       "Paris",
-				Department: "Paris",
-				Long:       5,
-				Lat:        5,
+	})
+	t.Run("All playgrounds returns playgrounds sorted by name", func(t *testing.T) {
+		got := database.SubmittedPlaygroundStore.AllPlaygrounds()
+		newPlayground1.ID = 1
+		newPlayground2.ID = 2
+		newPlayground3.ID = 3
+		want := []store.Playground{
+			newPlayground1,
+			newPlayground2,
+			newPlayground3,
+		}
+		test.AssertPlaygrounds(t, got, want)
+	})
+	t.Run("DeletePlayground deletes playground from submitted playgrounds", func(t *testing.T) {
+		deleteID := newPlayground2.ID
+		originalLength := len(submittedPlaygroundStore.AllPlaygrounds())
+		submittedPlaygroundStore.DeletePlayground(deleteID)
+
+		postDeleteLength := len(submittedPlaygroundStore.AllPlaygrounds())
+		if postDeleteLength >= originalLength {
+			t.Fatalf("Slice length %d, should be lower than the original length %d", postDeleteLength, originalLength)
+		}
+
+		for _, playground := range submittedPlaygroundStore.AllPlaygrounds() {
+			if playground.ID == deleteID {
+				t.Errorf("Playground %s should have been deleted", playground.Name)
 			}
-			errorsMap := str.NewPlayground(playground3)
+		}
+	})
+	t.Run("Add Playground ", func(t *testing.T) {
+		t.Run("ADDS a new playground, INCREMENTS ID and deletes entry from submittedPlaygrounds", func(t *testing.T) {
+			newPlayground1.Long = 2
+			newPlayground1.Lat = 2
+
+			errorsMap := database.AddPlayground(newPlayground1, newPlayground1.ID)
 			if len(errorsMap) > 0 {
 				t.Fatalf("Couldn't add playground, %v", errorsMap)
 			}
 
-			cases := map[string]store.Playground{
-				"same name (Capitalized)": store.Playground{
-					Name:       strings.ToUpper(playground3.Name),
-					Address:    "test",
-					PostalCode: "75019",
-					City:       "Paris",
-					Department: "Paris",
-					Long:       1,
-					Lat:        1,
-				},
-				"same address": store.Playground{
-					Name:       "test",
-					Address:    strings.ToUpper(playground3.Address),
-					PostalCode: "75019",
-					City:       "Paris",
-					Department: "Paris",
-					Long:       1,
-					Lat:        1,
-				},
-				"same long and lat": store.Playground{
-					Name:       "test",
-					Address:    "test",
-					PostalCode: "75019",
-					City:       "Paris",
-					Department: "Paris",
-					Long:       playground3.Long,
-					Lat:        playground3.Lat,
-				},
+			got, err := str.Playground(2)
+			if err != nil {
+				t.Fatalf("There shouldn't be an error, %s", err)
 			}
-			for errorDescription, playground := range cases {
-				err := str.NewPlayground(playground)
-				if err == nil {
-					t.Errorf("There should be an error, %q", errorDescription)
+
+			test.AssertPlayground(t, got, newPlayground1)
+
+			_, err = submittedPlaygroundStore.Playground(newPlayground1.ID)
+			if err == nil {
+				t.Errorf("There should be an error")
+			}
+		})
+		t.Run("Returns an error ", func(t *testing.T) {
+			newPlayground := store.Playground{
+				Name:       "EEEE",
+				Address:    "eeee",
+				PostalCode: "75019",
+				City:       "Paris",
+				Department: "Paris",
+				Long:       1,
+				Lat:        1,
+				Author:     "Youssef",
+			}
+			t.Run("if playgroundID doesn't match any submitted playground", func(t *testing.T) {
+				errorsMap := database.AddPlayground(newPlayground, 2)
+				if len(errorsMap) == 0 {
+					t.Fatalf("There should be an error \n")
 				}
+			})
+			t.Run("if playgroundID doesn't match playground name", func(t *testing.T) {
+				errorsMap := database.AddPlayground(newPlayground, 3)
+				if len(errorsMap) == 0 {
+					t.Fatalf("There should be an error \n")
+				}
+			})
+			t.Run("if playground already exists (same long and lat)", func(t *testing.T) {
+				newPlayground3.Long = 2
+				newPlayground3.Lat = 2
+
+				err := database.AddPlayground(newPlayground3, newPlayground3.ID)
+				if err == nil {
+					t.Errorf("There should be an error")
+				}
+			})
+		})
+	})
+}
+
+func TestNew(t *testing.T) {
+	t.Run("New WORKS with correct file", func(t *testing.T) {
+		file, removeFile := createTempFile(t, `[
+		{"Name": "b"},{"Name": "a"} ]`)
+		defer removeFile()
+
+		str, _ := store.New(file)
+		playground1 := store.Playground{Name: "a", ID: 1}
+		playground2 := store.Playground{Name: "b", ID: 2}
+
+		t.Run("Playground RETURNS the right playground", func(t *testing.T) {
+			got, _ := str.Playground(2)
+
+			test.AssertPlayground(t, got, playground2)
+		})
+		t.Run("New adds IDs to playgrounds starting with 1 and ordered by name", func(t *testing.T) {
+			playground, _ := str.Playground(1)
+			got := playground.ID
+			want := playground1.ID
+
+			if got != want {
+				t.Errorf("got : %d, want : %d", got, want)
 			}
 		})
 	})
-
-	t.Run("Store works even with an empty file", func(t *testing.T) {
+	t.Run("New works even with an empty file", func(t *testing.T) {
 		file, removeFile := createTempFile(t, "")
 		defer removeFile()
 
@@ -201,118 +298,13 @@ func TestStore(t *testing.T) {
 
 		test.AssertPlaygrounds(t, got, store.Playgrounds{})
 	})
-	t.Run("Store returns an error if file isn't JSON formatted", func(t *testing.T) {
+	t.Run("New returns an error if file isn't JSON formatted", func(t *testing.T) {
 		file, removeFile := createTempFile(t, "This is a test")
 		defer removeFile()
 
 		_, got := store.New(file)
 
 		assertError(t, got, store.ErrorParsingJson)
-	})
-}
-
-func TestSubmittedPlaygrounds(t *testing.T) {
-	file, removeFile := createTempFile(t, `[
-		{"Name": "b", "Address":"Avenue de test"},{"Name": "a"} ]`)
-	defer removeFile()
-	str, _ := store.New(file)
-	submittedPlaygroundStore := &store.SubmittedPlaygroundStore{}
-	database := store.PlaygroundDatabase{
-		MainPlaygroundStore:      str,
-		SubmittedPlaygroundStore: submittedPlaygroundStore,
-	}
-	newPlayground1 := store.Playground{
-		Name:       "c",
-		Address:    "a",
-		PostalCode: "75001",
-		City:       "a",
-		Department: "a",
-	}
-	newPlayground2 := store.Playground{
-		Name:       "d",
-		Address:    "b",
-		PostalCode: "75001",
-		City:       "b",
-		Department: "b",
-	}
-	cases := []store.Playground{
-		newPlayground1,
-		newPlayground2,
-	}
-	for index, newPlayground := range cases {
-		t.Run("Submit playground adds a playground to submitted playgrounds store and increments ID", func(t *testing.T) {
-			errorsMap := database.SubmitPlayground(newPlayground)
-			if len(errorsMap) > 0 {
-				t.Fatalf("There shouldn't be an error, %s", errorsMap)
-			}
-
-			playgroundSubmitted, err := database.SubmittedPlaygroundStore.Playground(index + 1)
-			if err != nil {
-				t.Fatalf("There shouldn't be an error, %s", err)
-			}
-
-			test.AssertPlayground(t, playgroundSubmitted, newPlayground)
-		})
-	}
-	t.Run("All playgrounds returns playgrounds sorted by name", func(t *testing.T) {
-		got := database.SubmittedPlaygroundStore.AllPlaygrounds()
-		newPlayground1.ID = 1
-		newPlayground2.ID = 2
-		want := []store.Playground{
-			newPlayground1,
-			newPlayground2,
-		}
-		test.AssertPlaygrounds(t, got, want)
-	})
-	t.Run("Returns an error if playground already exists in main store or submitted playgrounds store (same name / same address)", func(t *testing.T) {
-		playground3 := store.Playground{
-			Name:       "Gymnase de test",
-			Address:    "2 avenue de flandre",
-			PostalCode: "75019",
-			City:       "Paris",
-			Department: "Paris",
-		}
-		errorsMap := database.SubmitPlayground(playground3)
-		if len(errorsMap) > 0 {
-			t.Fatalf("Couldn't add playground, %v", errorsMap)
-		}
-
-		cases := map[string]store.Playground{
-			"same name (Capitalized)": store.Playground{
-				Name:       strings.ToUpper(playground3.Name),
-				Address:    "test",
-				PostalCode: "75019",
-				City:       "Paris",
-				Department: "Paris",
-			},
-			"same address": store.Playground{
-				Name:       "test",
-				Address:    strings.ToUpper(playground3.Address),
-				PostalCode: "75019",
-				City:       "Paris",
-				Department: "Paris",
-			},
-			"Existing playground name in main store": store.Playground{
-				Name:       "A",
-				Address:    "test2",
-				PostalCode: "75019",
-				City:       "Paris",
-				Department: "Paris",
-			},
-			"Existing playground address in main store": store.Playground{
-				Name:       "e",
-				Address:    "Avenue de test",
-				PostalCode: "75019",
-				City:       "Paris",
-				Department: "Paris",
-			},
-		}
-		for errorDescription, playground := range cases {
-			err := database.SubmitPlayground(playground)
-			if err == nil {
-				t.Errorf("There should be an error, %q", errorDescription)
-			}
-		}
 	})
 }
 
