@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/yousseffarkhani/playground/backend2/configuration"
 
@@ -96,12 +97,15 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 
 	// API
 	// Playground
+	// GET
 	router.HandleFunc(APIPlaygrounds, svr.getAllPlaygrounds).Methods(http.MethodGet)
 	router.HandleFunc(APIPlaygrounds+"/", svr.getAllPlaygrounds).Methods(http.MethodGet)
 	router.HandleFunc(APIPlayground, svr.getPlayground).Methods(http.MethodGet)
 	router.HandleFunc(APINearestPlaygrounds, svr.getNearestPlaygrounds).Methods(http.MethodGet)
-	router.HandleFunc(APIPlaygrounds, svr.submitPlayground).Methods(http.MethodPost)
 	router.HandleFunc(APISubmittedPlaygrounds, svr.getAllSubmittedPlaygrounds).Methods(http.MethodGet)
+	// POST
+	router.Handle(APISubmittedPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.submitPlayground)).Methods(http.MethodPost)
+	router.Handle(APIPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.addPlayground)).Methods(http.MethodPost)
 	// Comment
 	// router.HandleFunc(APIComments, svr.addComment).Methods(http.MethodPost)
 	router.HandleFunc(APIComments, svr.getAllComments).Methods(http.MethodGet)
@@ -302,7 +306,7 @@ func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.
 	}
 }
 
-func (p *PlaygroundServer) submitPlayground(w http.ResponseWriter, r *http.Request) {
+func (p *PlaygroundServer) addPlayground(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	formValues := make(map[string]string)
 	for key, field := range r.Form {
@@ -314,22 +318,91 @@ func (p *PlaygroundServer) submitPlayground(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	newPlayground := store.Playground{
-		Name:       formValues["name"],
-		Address:    formValues["address"],
-		PostalCode: formValues["postal_code"],
-		City:       formValues["city"],
-		Department: formValues["department"],
+	submittedPlaygroundID, err := strconv.Atoi(formValues["ID"])
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
-	errorsMap := p.database.SubmitPlayground(newPlayground)
+	submittedPlayground, err := p.database.SubmittedPlaygroundStore.Playground(submittedPlaygroundID)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	longitude, err := strconv.ParseFloat(formValues["longitude"], 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	latitude, err := strconv.ParseFloat(formValues["latitude"], 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	newPlayground := store.Playground{
+		Name:             submittedPlayground.Name,
+		Address:          formValues["address"],
+		PostalCode:       formValues["postal_code"],
+		City:             formValues["city"],
+		Department:       formValues["department"],
+		Long:             longitude,
+		Lat:              latitude,
+		Coating:          formValues["coating"],
+		Type:             formValues["type"],
+		Author:           submittedPlayground.Author,
+		TimeOfSubmission: submittedPlayground.TimeOfSubmission,
+	}
+
+	if formValues["open"] == "" {
+		newPlayground.Open = true
+	}
+
+	errorsMap := p.database.AddPlayground(newPlayground, submittedPlaygroundID)
 	if len(errorsMap) > 0 {
 		log.Println(errorsMap)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func (p *PlaygroundServer) submitPlayground(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value("claims").(*authentication.Claims)
+	if ok {
+		username := claims.Username
+		r.ParseForm()
+		formValues := make(map[string]string)
+		for key, field := range r.Form {
+			if value := strings.TrimSpace(strings.Join(field, "")); value != "" {
+				formValues[key] = value
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+
+		newPlayground := store.Playground{
+			Name:             formValues["name"],
+			Address:          formValues["address"],
+			PostalCode:       formValues["postal_code"],
+			City:             formValues["city"],
+			Department:       formValues["department"],
+			Author:           username,
+			TimeOfSubmission: time.Now(),
+		}
+
+		errorsMap := p.database.SubmitPlayground(newPlayground)
+		if len(errorsMap) > 0 {
+			log.Println(errorsMap)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func extractAddressFromRequest(r *http.Request) (string, error) {
