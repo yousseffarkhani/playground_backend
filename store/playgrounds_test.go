@@ -56,17 +56,17 @@ func TestPlaygrounds(t *testing.T) {
 		playgrounds := setupPlaygrounds()
 		want := playgrounds[0]
 
-		got, _ := playgrounds.Find(1)
+		got, _, _ := playgrounds.Find(1)
 
 		test.AssertPlayground(t, got, want)
 	})
 	t.Run("Find returns error if playground doesn't exist", func(t *testing.T) {
 		playgrounds := setupPlaygrounds()
 
-		_, got := playgrounds.Find(0)
+		_, _, got := playgrounds.Find(0)
 		assertError(t, got, store.ErrorNotFoundPlayground)
 
-		_, got = playgrounds.Find(3)
+		_, _, got = playgrounds.Find(3)
 		assertError(t, got, store.ErrorNotFoundPlayground)
 	})
 }

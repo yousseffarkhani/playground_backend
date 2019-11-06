@@ -6,9 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/yousseffarkhani/playground/backend2/test"
-
 	"github.com/yousseffarkhani/playground/backend2/store"
+	"github.com/yousseffarkhani/playground/backend2/test"
 )
 
 func TestPlaygroundDatabase(t *testing.T) {
@@ -261,9 +260,54 @@ func TestPlaygroundDatabase(t *testing.T) {
 			})
 		})
 	})
+	t.Run("Add comment ", func(t *testing.T) {
+		t.Run("ADDS a new comment to the playground", func(t *testing.T) {
+			want := store.Comment{
+				Author:  "Youssef",
+				Content: "test",
+			}
+			err := database.MainPlaygroundStore.AddComment(1, want)
+			if err != nil {
+				t.Fatalf("Couldn't add comment, %s", err)
+			}
+
+			playground, err := str.Playground(1)
+			if err != nil {
+				t.Fatalf("Couldn't get playground, %s", err)
+			}
+
+			if len(playground.Comments) == 0 {
+				t.Fatal("Comment wasn't added")
+			}
+
+			want.ID = 1
+			got := playground.Comments[0]
+			if got != want {
+				t.Errorf("got : %+v, want : %+v", got, want)
+			}
+		})
+		t.Run("returns an error if a field is empty", func(t *testing.T) {
+			cases := []store.Comment{
+				store.Comment{
+					Author:  "  ",
+					Content: "test",
+				},
+				store.Comment{
+					Author:  "Youssef",
+					Content: "  ",
+				},
+			}
+			for _, comment := range cases {
+				err := database.MainPlaygroundStore.AddComment(1, comment)
+				if err == nil {
+					t.Error("An error should be returned")
+				}
+			}
+		})
+	})
 }
 
-func TestNew(t *testing.T) {
+/* func TestNew(t *testing.T) {
 	t.Run("New WORKS with correct file", func(t *testing.T) {
 		file, removeFile := createTempFile(t, `[
 		{"Name": "b"},{"Name": "a"} ]`)
@@ -306,7 +350,7 @@ func TestNew(t *testing.T) {
 
 		assertError(t, got, store.ErrorParsingJson)
 	})
-}
+} */
 
 func assertError(t *testing.T, got, want error) {
 	t.Helper()

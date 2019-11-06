@@ -110,6 +110,7 @@ Il est possible de créer un compte permettant de commenter les terrains et d'en
 
 # TODO
 
+- Refaire le système d'ID sinon il y a une possibilité d'effacement de playground
 - ~~Bouton supprimer sur les terrains soumis~~
 - Refactorer store.go
 - Ajouter une description aux terrains

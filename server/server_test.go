@@ -84,6 +84,10 @@ func (m *mockPlaygroundStore) NewPlayground(newPlayground store.Playground) {
 func (m *mockPlaygroundStore) DeletePlayground(ID int) {
 }
 
+func (m *mockPlaygroundStore) AddComment(playgroundID int, newComment store.Comment) error {
+	return nil
+}
+
 type mockGeolocationClient struct{}
 
 func (m *mockGeolocationClient) GetLongAndLat(address string) (long, lat float64, err error) {
@@ -176,8 +180,8 @@ func TestAPIs(t *testing.T) {
 				})
 			})
 			t.Run("POST to ", func(t *testing.T) {
+				// No testing because username from JWT is needed (maybe too much of an integration test ?)
 				t.Run(server.APISubmittedPlaygrounds, func(t *testing.T) {
-					// No testing because username from JWT is needed (maybe too much of an integration test ?)
 					/* t.Run(" adds a new playground (with white spaces trimmed) to the submitted playground store", func(t *testing.T) {
 						want := store.Playground{
 							Name:       "test3",
@@ -415,32 +419,33 @@ func TestAPIs(t *testing.T) {
 						}
 					})
 				})
-				// t.Run("Post", func(t *testing.T) {
-				// 	t.Run(" records a new comment", func(t *testing.T) {
-				// 		req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", "comment=This is a nice playground")
-				// 		res := httptest.NewRecorder()
+				// No testing because username from JWT is needed (maybe too much of an integration test ?)
+				t.Run("Post", func(t *testing.T) {
+					t.Run(" records a new comment", func(t *testing.T) {
+						req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", "comment=  This is a nice playground")
+						res := httptest.NewRecorder()
 
-				// 		svr.ServeHTTP(res, req)
+						svr.ServeHTTP(res, req)
 
-				// 		assertStatusCode(t, res, http.StatusAccepted)
-				// 		// assertContent
-				// 		// asset add comment called
-				// 		// Assert empty comment
-				// 		// assert author
-				// 		// Assert ID
-				// 		// Input : HTML Form comment
-				// 		// Decode input
-				// 		// Add comment
-				// 		// Add authorization middleware
-				// 	})
-				// 	// t.Run(" returns status not found if playground doesn't exist", func(t *testing.T) {
-				// 	// 	req := test.NewPostFormRequest(t, "/api/playgrounds/1000/comments", "comment=This is a nice playground")
-				// 	// 	res := httptest.NewRecorder()
-				// 	// 	svr.ServeHTTP(res, req)
+						assertStatusCode(t, res, http.StatusAccepted)
+						// assertContent
+						// asset add comment called
+						// Assert empty comment
+						// assert author
+						// Assert ID
+						// Input : HTML Form comment
+						// Decode input
+						// Add comment
+						// Add authorization middleware
+					})
+					// t.Run(" returns status not found if playground doesn't exist", func(t *testing.T) {
+					// 	req := test.NewPostFormRequest(t, "/api/playgrounds/1000/comments", "comment=This is a nice playground")
+					// 	res := httptest.NewRecorder()
+					// 	svr.ServeHTTP(res, req)
 
-				// 	// 	assertStatusCode(t, res, http.StatusNotFound)
-				// 	// })
-				// })
+					// 	assertStatusCode(t, res, http.StatusNotFound)
+					// })
+				})
 				/* 		t.Run("Delete", func(t *testing.T) {
 					t.Run(" returns status accepted", func(t *testing.T) {
 						req := test.NewGetRequest(t, "/api/playgrounds/1/comments/1/delete")
@@ -592,7 +597,6 @@ func (m *mockMiddleware) ThenFunc(finalPage func(http.ResponseWriter, *http.Requ
 	})
 }
 func TestMiddlewares(t *testing.T) {
-	// TODO : Add Authorized middleware
 	configuration.LoadEnvVariables()
 	mockIsLogged := &mockMiddleware{}
 	mockRefreshJWT := &mockMiddleware{}
@@ -640,6 +644,8 @@ func TestMiddlewares(t *testing.T) {
 		server.URLSubmittedPlaygrounds + "/1": "GET",
 		server.APISubmittedPlaygrounds:        "POST",
 		server.APIPlaygrounds:                 "POST",
+		server.APIDeleteSubmittedPlayground:   "POST",
+		server.APIComments:                    "POST",
 	}
 	for url, method := range tests {
 		t.Run(fmt.Sprintf("Authorized middleware is called on route %q", url), func(t *testing.T) {

@@ -54,17 +54,45 @@
 <!-- Comments Form -->
 <div class="card my-4">
     <h5 class="card-header">Un commentaire ?</h5>
+    <div class="alert" id="result" hidden></div>
     <div class="card-body">
-        <form>
+        <form id="commentForm">
             <div class="form-group">
-                <textarea class="form-control" rows="3"></textarea>
+                <textarea class="form-control" rows="3" name="comment" maxlength="1000" required></textarea>
             </div>
             <button type="submit" class="btn btn-primary">Envoyer</button>
         </form>
     </div>
 </div>
+<script>
+    const resultDiv = document.querySelector("#result")
+
+    const commentForm = document.getElementById("commentForm");
+    commentForm.addEventListener("submit", function (e) {
+        e.preventDefault()
+
+        const formData = new FormData(this)
+        const searchParams = new URLSearchParams()
+
+        for (const pair of formData) {
+            searchParams.append(pair[0], pair[1]);
+        }
+        fetch("/api/playgrounds/{{.Data.ID }}/comments", {
+            method: 'POST',
+            body: searchParams,
+        }).then(res => {
+            if (res.status === 202) {
+                window.location.reload();
+                return
+            }
+            resultDiv.removeAttribute("hidden")
+            resultDiv.classList.add("alert-danger");
+            resultDiv.innerHTML = "Le commentaire n'a pas été soumis";
+        })
+    })
+</script>
 {{else}}
-Se connecter pour pouvoir commenter
+<a href="/login">Se connecter pour pouvoir commenter</a>
 {{end}}
 
 
@@ -74,7 +102,8 @@ Se connecter pour pouvoir commenter
 <div class="media mb-4">
     <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt="">
     <div class="media-body">
-        <h5 class="mt-0"> {{.Author}}</h5>
+        <h5 class="mt-0"> {{.Author}}<span class="text-secondary"> |
+                {{.TimeOfSubmission.Format "02-01-2006 15:04:05"}}</span></h5>
         {{.Content}}
     </div>
 </div>

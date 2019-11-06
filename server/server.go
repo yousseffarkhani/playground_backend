@@ -110,9 +110,11 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	router.Handle(APIDeleteSubmittedPlayground, svr.middlewares["authorized"].ThenFunc(svr.deleteSubmittedPlayground)).Methods(http.MethodPost)
 
 	// Comment
-	// router.HandleFunc(APIComments, svr.addComment).Methods(http.MethodPost)
+	// GET
 	router.HandleFunc(APIComments, svr.getAllComments).Methods(http.MethodGet)
 	router.HandleFunc(APIComment, svr.getComment).Methods(http.MethodGet)
+	// POST
+	router.Handle(APIComments, svr.middlewares["authorized"].ThenFunc(svr.addComment)).Methods(http.MethodPost)
 
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, URLHome, http.StatusFound)
@@ -152,34 +154,41 @@ func (p *PlaygroundServer) getComment(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/*
 func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
-	ID, err := extractIDFromRequest(r, "ID")
-	if err != nil {
-		log.Println("Couldn't parse request parameter")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	err = r.ParseForm()
-	if err != nil {
-		log.Println("Couldn't parse request")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	newComment := store.Comment{
-		Content: r.FormValue("comment"),
-		Author:  "test",
-		ID:      1,
-	}
-	err = p.database.MainPlaygroundStore.AddComment(ID, newComment)
+	claims, ok := r.Context().Value("claims").(*authentication.Claims)
+	if ok {
+		username := claims.Username
+		ID, err := extractIDFromRequest(r, "ID")
+		if err != nil {
+			log.Println("Couldn't parse request parameter")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = r.ParseForm()
+		if err != nil {
+			log.Println("Couldn't parse request")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-	if err != nil {
-		log.Printf("Problème à l'ajout du commentaire, %s", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		newComment := store.Comment{
+			Content:          r.FormValue("comment"),
+			Author:           username,
+			TimeOfSubmission: time.Now(),
+		}
+
+		err = p.database.MainPlaygroundStore.AddComment(ID, newComment)
+
+		if err != nil {
+			log.Printf("Problème à l'ajout du commentaire, %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
 	}
-	w.WriteHeader(http.StatusAccepted)
-} */
+}
 
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := gothic.CompleteUserAuth(w, r)
@@ -317,6 +326,7 @@ func (p *PlaygroundServer) deleteSubmittedPlayground(w http.ResponseWriter, r *h
 		return
 	}
 	p.database.SubmittedPlaygroundStore.DeletePlayground(ID)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (p *PlaygroundServer) addPlayground(w http.ResponseWriter, r *http.Request) {

@@ -36,9 +36,9 @@ type Playgrounds []Playground
 type Comment struct {
 	ID int
 	// PlaygroundID int
-	Content string
-	Author  string
-	// Date         string // TODO: Ajouter
+	Content          string
+	Author           string
+	TimeOfSubmission time.Time
 }
 
 type Comments []Comment
@@ -52,13 +52,13 @@ func NewPlaygroundsFromJSON(input io.Reader) (Playgrounds, error) {
 	return playgrounds, nil
 }
 
-func (p Playgrounds) Find(ID int) (Playground, error) {
-	for _, playground := range p {
+func (p Playgrounds) Find(ID int) (Playground, int, error) {
+	for index, playground := range p {
 		if playground.ID == ID {
-			return playground, nil
+			return playground, index, nil
 		}
 	}
-	return Playground{}, ErrorNotFoundPlayground
+	return Playground{}, 0, ErrorNotFoundPlayground
 }
 func (p Playgrounds) FindNearestPlaygrounds(client GeolocationClient, address string) (Playgrounds, error) {
 	long, lat, err := client.GetLongAndLat(address)
@@ -110,10 +110,11 @@ func (p *Playground) AddComment(comment Comment) error {
 		return ErrEmptyField
 	}
 	newComment := Comment{
-		Content: comment.Content,
-		Author:  comment.Author,
-		ID:      len(p.Comments) + 1, // TODO Add other fields
+		Content:          comment.Content,
+		Author:           comment.Author,
+		ID:               len(p.Comments) + 1,
+		TimeOfSubmission: comment.TimeOfSubmission,
 	}
-	p.Comments = append(p.Comments, newComment)
+	p.Comments = append(Comments{newComment}, p.Comments...)
 	return nil
 }
