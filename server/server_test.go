@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,7 +9,10 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/yousseffarkhani/playground/backend2/authentication"
 	"github.com/yousseffarkhani/playground/backend2/configuration"
 	"github.com/yousseffarkhani/playground/backend2/server"
 
@@ -84,10 +88,6 @@ func (m *mockPlaygroundStore) NewPlayground(newPlayground store.Playground) {
 func (m *mockPlaygroundStore) DeletePlayground(ID int) {
 }
 
-func (m *mockPlaygroundStore) AddComment(playgroundID int, newComment store.Comment) error {
-	return nil
-}
-
 type mockGeolocationClient struct{}
 
 func (m *mockGeolocationClient) GetLongAndLat(address string) (long, lat float64, err error) {
@@ -96,6 +96,12 @@ func (m *mockGeolocationClient) GetLongAndLat(address string) (long, lat float64
 
 func TestAPIs(t *testing.T) {
 	// Arrange
+	playground1.ID = 1
+	playground2.ID = 2
+	var playgrounds = store.Playgrounds{
+		playground1,
+		playground2,
+	}
 	str := &mockPlaygroundStore{playgrounds: playgrounds}
 	client := &mockGeolocationClient{}
 
@@ -180,9 +186,8 @@ func TestAPIs(t *testing.T) {
 				})
 			})
 			t.Run("POST to ", func(t *testing.T) {
-				// No testing because username from JWT is needed (maybe too much of an integration test ?)
 				t.Run(server.APISubmittedPlaygrounds, func(t *testing.T) {
-					/* t.Run(" adds a new playground (with white spaces trimmed) to the submitted playground store", func(t *testing.T) {
+					t.Run(" adds a new playground (with white spaces trimmed) to the submitted playground store", func(t *testing.T) {
 						want := store.Playground{
 							Name:       "test3",
 							Address:    "44 avenue de Flandre",
@@ -192,6 +197,7 @@ func TestAPIs(t *testing.T) {
 						}
 						mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", want.Name, want.Address, want.PostalCode, want.City, want.Department)
 						req := test.NewPostFormRequest(t, server.APISubmittedPlaygrounds, mockForm)
+						req = setupRequestContext(req)
 						res := httptest.NewRecorder()
 
 						svr.ServeHTTP(res, req)
@@ -207,15 +213,17 @@ func TestAPIs(t *testing.T) {
 						if err != nil {
 							t.Fatalf("Unable to parse response into slice, '%v'", err)
 						}
-
+						if len(got) == 0 {
+							t.Fatalf("Response is empty")
+						}
 						test.AssertPlayground(t, got[0], want)
-					}) */
-					/* t.Run(" returns bad request", func(t *testing.T) {
+					})
+					t.Run(" returns bad request", func(t *testing.T) {
 						cases := map[string]store.Playground{
 							" if there is an empty form value": store.Playground{
 								Name:       "test4",
 								Address:    "test",
-								PostalCode: "",
+								PostalCode: "  ",
 								City:       "Paris",
 								Department: "Paris",
 							},
@@ -252,7 +260,8 @@ func TestAPIs(t *testing.T) {
 						for description, playground := range cases {
 							t.Run(description, func(t *testing.T) {
 								mockForm := fmt.Sprintf("name= %s &address= %s &postal_code= %s &city= %s &department= %s ", playground.Name, playground.Address, playground.PostalCode, playground.City, playground.Department)
-								req := test.NewPostFormRequest(t, server.APIPlaygrounds, mockForm)
+								req := test.NewPostFormRequest(t, server.APISubmittedPlaygrounds, mockForm)
+								req = setupRequestContext(req)
 								res := httptest.NewRecorder()
 
 								svr.ServeHTTP(res, req)
@@ -260,10 +269,11 @@ func TestAPIs(t *testing.T) {
 								assertStatusCode(t, res, http.StatusBadRequest)
 							})
 						}
-					}) */
+					})
 				})
 
-				t.Run(server.APIDeleteSubmittedPlayground, func(t *testing.T) {
+				t.Run(server.APISubmittedPlayground, func(t *testing.T) {
+					// TODO
 					// 1. Test to see if p.database.SubmittedPlaygroundStore.DeletePlayground() has been called
 					// 2. Test to see if it returns a StatusInternalServerError
 
@@ -419,57 +429,94 @@ func TestAPIs(t *testing.T) {
 						}
 					})
 				})
-				// No testing because username from JWT is needed (maybe too much of an integration test ?)
 				t.Run("Post", func(t *testing.T) {
-					t.Run(" records a new comment", func(t *testing.T) {
-						req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", "comment=  This is a nice playground")
-						res := httptest.NewRecorder()
-
-						svr.ServeHTTP(res, req)
-
-						assertStatusCode(t, res, http.StatusAccepted)
-						// assertContent
-						// asset add comment called
-						// Assert empty comment
-						// assert author
-						// Assert ID
-						// Input : HTML Form comment
-						// Decode input
-						// Add comment
-						// Add authorization middleware
-					})
-					// t.Run(" returns status not found if playground doesn't exist", func(t *testing.T) {
-					// 	req := test.NewPostFormRequest(t, "/api/playgrounds/1000/comments", "comment=This is a nice playground")
-					// 	res := httptest.NewRecorder()
-					// 	svr.ServeHTTP(res, req)
-
-					// 	assertStatusCode(t, res, http.StatusNotFound)
-					// })
-				})
-				/* 		t.Run("Delete", func(t *testing.T) {
-					t.Run(" returns status accepted", func(t *testing.T) {
-						req := test.NewGetRequest(t, "/api/playgrounds/1/comments/1/delete")
-						res := httptest.NewRecorder()
-						svr.ServeHTTP(res, req)
-
-						assertStatusCode(t, res, http.StatusAccepted)
-					})
-					t.Run(" returns status bad request (playground or comment doesn't exist)", func(t *testing.T) {
-						cases := []string{
-							"/api/playgrounds/1000/comments/1/delete",
-							"/api/playgrounds/1/comments/1000/delete",
+					t.Run(" records a new comment trimmed and increments ID", func(t *testing.T) {
+						want := store.Comment{
+							Author:  "Youssef",
+							Content: "   This is a nice playground",
+							ID:      3,
 						}
-						for _, c := range cases {
-							req := test.NewGetRequest(t, c)
+						req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", fmt.Sprintf("comment=  %s", want.Content))
+						req = setupRequestContext(req)
+						res := httptest.NewRecorder()
+
+						svr.ServeHTTP(res, req)
+
+						assertStatusCode(t, res, http.StatusAccepted)
+
+						req = test.NewGetRequest(t, "/api/playgrounds/1/comments/3")
+						res = httptest.NewRecorder()
+						svr.ServeHTTP(res, req)
+						var got store.Comment
+						json.NewDecoder(res.Body).Decode(&got)
+						if reflect.DeepEqual(got, want) {
+							t.Errorf("got : %+v, want : %+v", got, want)
+						}
+					})
+					t.Run(" returns a status bad request if comment is empty", func(t *testing.T) {
+						req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", "comment=   ")
+						req = setupRequestContext(req)
+						res := httptest.NewRecorder()
+
+						svr.ServeHTTP(res, req)
+
+						assertStatusCode(t, res, http.StatusBadRequest)
+					})
+					t.Run(" returns status not found if playground doesn't exist", func(t *testing.T) {
+						req := test.NewPostFormRequest(t, "/api/playgrounds/1000/comments", "comment=This is a nice playground")
+						req = setupRequestContext(req)
+						res := httptest.NewRecorder()
+
+						svr.ServeHTTP(res, req)
+
+						assertStatusCode(t, res, http.StatusBadRequest)
+					})
+				})
+				t.Run("Delete", func(t *testing.T) {
+					t.Run(" returns status accepted and deletes comment if request comes from the author", func(t *testing.T) {
+						req := test.NewDeleteRequest(t, "/api/playgrounds/1/comments/1")
+						res := httptest.NewRecorder()
+						svr.ServeHTTP(res, req)
+
+						assertStatusCode(t, res, http.StatusAccepted)
+
+						req = test.NewGetRequest(t, "/api/playgrounds/1/comments")
+						res = httptest.NewRecorder()
+						svr.ServeHTTP(res, req)
+
+						var got store.Comments
+						err := json.NewDecoder(res.Body).Decode(&got)
+						if err != nil {
+							t.Fatalf("Unable to parse input into comment, '%v'", err)
+						}
+						for _, comment := range got {
+							if comment.ID == 1 {
+								t.Errorf("This comment should be deleted")
+							}
+						}
+						// Deletes comment from author
+					})
+					/* t.Run(" returns status bad request (playground or comment doesn't exist)", func(t *testing.T) {
+						cases := []string{
+							"/api/playgrounds/1000/comments/1",
+							"/api/playgrounds/1/comments/1000",
+						}
+						for _, URL := range cases {
+							req, err := http.NewRequest(http.MethodDelete, URL, nil)
+							if err != nil {
+								t.Fatalf("Couldn't generate request, %s", err)
+							}
 							res := httptest.NewRecorder()
+							// req = setupRequestContext(req)
+
 							svr.ServeHTTP(res, req)
 
 							assertStatusCode(t, res, http.StatusBadRequest)
 						}
-					})
+					}) */
 				})
-				t.Run("Update", func(t *testing.T) {
-					t.Run(" returns status accepted", func(t *testing.T) {
+				/*	t.Run("Update", func(t *testing.T) {
+					t.Run(" returns status accepted and updates comment if request comes from the author", func(t *testing.T) {
 						req := test.NewGetRequest(t, "/api/playgrounds/1/comments/1/update")
 						res := httptest.NewRecorder()
 						svr.ServeHTTP(res, req)
@@ -495,6 +542,41 @@ func TestAPIs(t *testing.T) {
 	})
 }
 
+func (m *mockPlaygroundStore) AddComment(playgroundID int, newComment store.Comment) error {
+	_, index, err := m.playgrounds.Find(playgroundID)
+	if err != nil {
+		return err
+	}
+	err = m.playgrounds[index].AddComment(newComment)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *mockPlaygroundStore) DeleteComment(playgroundID, commentID int) error {
+	_, index, err := m.playgrounds.Find(playgroundID)
+	if err != nil {
+		return err
+	}
+	err = m.playgrounds[index].DeleteComment(commentID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func setupRequestContext(req *http.Request) *http.Request {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, "claims", &authentication.Claims{
+		Username: "Youssef",
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(15 * time.Minute).Unix(),
+		},
+	})
+	return req.WithContext(ctx)
+}
+
 type mockView struct {
 	data   server.RenderingData
 	called bool
@@ -508,6 +590,12 @@ func (m *mockView) Render(w io.Writer, r *http.Request, data server.RenderingDat
 
 func TestViews(t *testing.T) {
 	configuration.LoadEnvVariables()
+	playground1.ID = 0
+	playground2.ID = 0
+	var playgrounds = store.Playgrounds{
+		playground1,
+		playground2,
+	}
 	str := &mockPlaygroundStore{playgrounds: playgrounds}
 
 	mockHomeView := &mockView{}
@@ -644,7 +732,7 @@ func TestMiddlewares(t *testing.T) {
 		server.URLSubmittedPlaygrounds + "/1": "GET",
 		server.APISubmittedPlaygrounds:        "POST",
 		server.APIPlaygrounds:                 "POST",
-		server.APIDeleteSubmittedPlayground:   "POST",
+		server.APISubmittedPlayground:         "POST",
 		server.APIComments:                    "POST",
 	}
 	for url, method := range tests {

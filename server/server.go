@@ -34,13 +34,13 @@ const (
 	URLContact              = "/contact" // TODO
 
 	// APIs
-	APIPlaygrounds               = "/api/playgrounds"
-	APIPlayground                = APIPlaygrounds + "/{ID}"
-	APINearestPlaygrounds        = "/api/nearestPlaygrounds"
-	APIComments                  = APIPlayground + "/comments"
-	APIComment                   = APIComments + "/{commentID}"
-	APISubmittedPlaygrounds      = "/api/submittedPlaygrounds"
-	APIDeleteSubmittedPlayground = APISubmittedPlaygrounds + "/{ID}"
+	APIPlaygrounds          = "/api/playgrounds"
+	APIPlayground           = APIPlaygrounds + "/{ID}"
+	APINearestPlaygrounds   = "/api/nearestPlaygrounds"
+	APIComments             = APIPlayground + "/comments"
+	APIComment              = APIComments + "/{commentID}"
+	APISubmittedPlaygrounds = "/api/submittedPlaygrounds"
+	APISubmittedPlayground  = APISubmittedPlaygrounds + "/{ID}"
 	// Other
 	JsonContentType    = "application/json"
 	HtmlContentType    = "text/html; charset=utf-8"
@@ -107,7 +107,7 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	// POST
 	router.Handle(APISubmittedPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.submitPlayground)).Methods(http.MethodPost)
 	router.Handle(APIPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.addPlayground)).Methods(http.MethodPost)
-	router.Handle(APIDeleteSubmittedPlayground, svr.middlewares["authorized"].ThenFunc(svr.deleteSubmittedPlayground)).Methods(http.MethodPost)
+	router.Handle(APISubmittedPlayground, svr.middlewares["authorized"].ThenFunc(svr.deleteSubmittedPlayground)).Methods(http.MethodPost)
 
 	// Comment
 	// GET
@@ -115,6 +115,8 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	router.HandleFunc(APIComment, svr.getComment).Methods(http.MethodGet)
 	// POST
 	router.Handle(APIComments, svr.middlewares["authorized"].ThenFunc(svr.addComment)).Methods(http.MethodPost)
+	// DELETE
+	router.Handle(APIComment, svr.middlewares["authorized"].ThenFunc(svr.deleteComment)).Methods(http.MethodDelete)
 
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, URLHome, http.StatusFound)
@@ -172,7 +174,7 @@ func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
 		}
 
 		newComment := store.Comment{
-			Content:          r.FormValue("comment"),
+			Content:          strings.TrimSpace(r.FormValue("comment")),
 			Author:           username,
 			TimeOfSubmission: time.Now(),
 		}
@@ -188,6 +190,58 @@ func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+}
+func (p *PlaygroundServer) deleteComment(w http.ResponseWriter, r *http.Request) {
+	// playgroundID, err := extractIDFromRequest(r, "ID")
+	// if err != nil {
+	// 	log.Println("Couldn't parse request parameter")
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	return
+	// }
+	// commentID, err := extractIDFromRequest(r, "commentID")
+	// if err != nil {
+	// 	log.Println("Couldn't parse request parameter")
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// err = p.database.MainPlaygroundStore.DeleteComment(playgroundID, commentID)
+	// if err != nil {
+	// 	log.Printf("Impossible de supprimer le commentaire, %s", err)
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	return
+	// }
+	// playground := p.findPlaygroundFromRequestParameter(w, r)
+	w.WriteHeader(http.StatusAccepted)
+
+	// Extract playground and comment ID
+	/* claims, ok := r.Context().Value("claims").(*authentication.Claims)
+	if ok {
+		username := claims.Username
+		ID, err := extractIDFromRequest(r, "ID")
+		if err != nil {
+			log.Println("Couldn't parse request parameter")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = r.ParseForm()
+		if err != nil {
+			log.Println("Couldn't parse request")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		err = p.database.MainPlaygroundStore.AddComment(ID, newComment)
+
+		if err != nil {
+			log.Printf("Impossible de supprimer le commentaire, %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+	} */
 }
 
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -320,12 +374,14 @@ func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.
 
 func (p *PlaygroundServer) deleteSubmittedPlayground(w http.ResponseWriter, r *http.Request) {
 	ID, err := extractIDFromRequest(r, "ID")
+
 	if err != nil {
 		log.Println("Couldn't parse request parameter")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	p.database.SubmittedPlaygroundStore.DeletePlayground(ID)
+
 	w.WriteHeader(http.StatusAccepted)
 }
 
@@ -484,6 +540,7 @@ func (p *PlaygroundServer) renderView(w http.ResponseWriter, r *http.Request, te
 		w.Header().Set("Accept-Encoding", GzipAcceptEncoding)
 		err := view.Render(w, r, renderingData)
 		if err != nil {
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
