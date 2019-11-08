@@ -19,6 +19,7 @@ type PlaygroundStore interface {
 	NewPlayground(newPlayground Playground)
 	DeletePlayground(ID int)
 	AddComment(playgroundID int, newComment Comment) error
+	DeleteComment(playgroundID, commentID int) error
 }
 
 type PlaygroundDatabase struct {
@@ -81,6 +82,23 @@ func (s *MainPlaygroundStore) AddComment(playgroundID int, newComment Comment) e
 }
 
 func (s *SubmittedPlaygroundStore) AddComment(playgroundID int, newComment Comment) error {
+	// TODO refaire proprement
+	return nil
+}
+
+func (s *MainPlaygroundStore) DeleteComment(playgroundID, commentID int) error {
+	_, index, err := s.playgrounds.Find(playgroundID)
+	if err != nil {
+		return err
+	}
+	err = s.playgrounds[index].DeleteComment(commentID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SubmittedPlaygroundStore) DeleteComment(playgroundID, commentID int) error {
 	// TODO refaire proprement
 	return nil
 }

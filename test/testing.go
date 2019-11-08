@@ -28,6 +28,15 @@ func NewPostFormRequest(t *testing.T, url string, body string) *http.Request {
 	return req
 }
 
+func NewDeleteRequest(t *testing.T, url string) *http.Request {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		t.Fatalf("Couldn't create request, %v", err)
+	}
+	return req
+}
+
 func AssertPlayground(t *testing.T, got, want store.Playground) {
 	t.Helper()
 	if got.Name != want.Name || got.Address != want.Address || got.Lat != want.Lat {

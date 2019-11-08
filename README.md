@@ -83,8 +83,10 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
     1. Mettre en place une API CRUD pour interagir avec les commentaires
     > Vérifier que l'utilisateur est connecté lorsqu'il poste un commentaire
     > Afficher l'input commentaire lorsque l'utilisateur est connecté
+- En tant qu'auteur du commentaire, pouvoir supprimer et modifier celui-ci
 - Disposer d'une fonction de recherche en fonction de certains critères sur les pages de soumissions et terrains (arrondissement, nom, horaires d'ouverture)
 - Afficher l'itinéraire (à pied, en voiture, le meilleur transport)
+- Pouvoir upvoter/downvoter les commentaires
 - Pouvoir noter les terrains en étant connecté
 - Mettre en place des évènements et un calendrier pour chaque terrain (pour que des joueurs puisse convenir sur un horaire de RDV)
 - Auto-complétion de l'adresse
@@ -110,13 +112,12 @@ Il est possible de créer un compte permettant de commenter les terrains et d'en
 
 # TODO
 
-- Refaire le système d'ID sinon il y a une possibilité d'effacement de playground
-- ~~Bouton supprimer sur les terrains soumis~~
+- Séparer server en plusieurs fichiers
+- Rediriger vers la page précédente après s'être loggé
+- Refaire le système d'ID sinon il y a une possibilité d'effacement de playground (prendre l'ID du dernier élément et l'incrémenter)
 - Refactorer store.go
 - Ajouter une description aux terrains
 - Faire un test complet de l'application (concurrence, etc ...)
-- ~~Réaliser le front-end~~
-- Ajouter une fonction permettant de lancer le serveur en https en mode production et sur le port 8080 de localhost en mode dev.
 - Rediriger le traffic HTTP vers HTTPS
 - Automatiser le renouvellement du certificat TLS.
 

@@ -6,7 +6,7 @@
         background-color: grey;
     }
 </style>
-
+{{.Data.ID}}
 <h1 class="mt-4 mb-3">{{.Data.Name}}
     <small>{{.Data.PostalCode}}</small>
     <small>{{.Data.City}}</small>
@@ -98,15 +98,31 @@
 
 {{if .Data.Comments}}
 {{range .Data.Comments}}
-<!-- Single Comment -->
 <div class="media mb-4">
     <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt="">
     <div class="media-body">
         <h5 class="mt-0"> {{.Author}}<span class="text-secondary"> |
                 {{.TimeOfSubmission.Format "02-01-2006 15:04:05"}}</span></h5>
-        {{.Content}}
+        <p>{{.Content}}</p>
+        {{if eq $.Username .Author}}
+        <button type="button" class="btn btn-primary btn-sm" id="modifyComment">Modifier</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="deleteComment({{.ID}})">Supprimer</button>
+        {{end}}
     </div>
 </div>
+<script>
+    function deleteComment(commentID) {
+        fetch(`/api/playgrounds/{{$.Data.ID}}/comments/${commentID}`, {
+            method: "DELETE"
+        }).then(res => {
+            if (res.status === 202) {
+                window.location.reload();
+            } else {
+                console.log("error")
+            }
+        });
+    }
+</script>
 {{ end }}
 {{else}}
 <h1>Il n'y a pas de commentaires pour le moment.</h1>
@@ -144,18 +160,9 @@
                 lacinia congue felis in faucibus.
             </div>
         </div>
-
     </div>
 </div> -->
 <script>
-    const navLinks = document.querySelectorAll(".nav-link")
-    const navLink = document.querySelector("#playgrounds")
-
-    navLinks.forEach(navLink => {
-        navLink.classList.remove("active")
-    })
-    navLink.classList.add("active")
-
     /* Displays map */
     const long = {{ .Data.Long }}
     const lat = {{ .Data.Lat }}
@@ -178,6 +185,14 @@
 
         infowindow.open(map, marker);
     }
+
+    const navLinks = document.querySelectorAll(".nav-link")
+    const navLink = document.querySelector("#playgrounds")
+
+    navLinks.forEach(navLink => {
+        navLink.classList.remove("active")
+    })
+    navLink.classList.add("active")
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key={{.GOOGLE_MAPS_API_KEY}}&callback=myMap"></script>
 {{end}}

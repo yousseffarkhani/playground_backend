@@ -305,9 +305,33 @@ func TestPlaygroundDatabase(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Delete comment ", func(t *testing.T) {
+		t.Run("DELETES comment", func(t *testing.T) {
+			database.MainPlaygroundStore.DeleteComment(1, 1)
+			playground, err := str.Playground(1)
+			if err != nil {
+				t.Fatalf("Couldn't get playground, %s", err)
+			}
+
+			if len(playground.Comments) != 0 {
+				t.Fatal("There should be no comment")
+			}
+		})
+		t.Run("returns an error if playground or comment doesn't exist", func(t *testing.T) {
+			cases := [][]int{[]int{1, 10}, []int{10, 1}}
+			for _, IDs := range cases {
+				playgroundID := IDs[0]
+				commentID := IDs[1]
+				err := database.MainPlaygroundStore.DeleteComment(playgroundID, commentID)
+				if err == nil {
+					t.Error("An error should be returned")
+				}
+			}
+		})
+	})
 }
 
-/* func TestNew(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Run("New WORKS with correct file", func(t *testing.T) {
 		file, removeFile := createTempFile(t, `[
 		{"Name": "b"},{"Name": "a"} ]`)
@@ -350,7 +374,7 @@ func TestPlaygroundDatabase(t *testing.T) {
 
 		assertError(t, got, store.ErrorParsingJson)
 	})
-} */
+}
 
 func assertError(t *testing.T, got, want error) {
 	t.Helper()

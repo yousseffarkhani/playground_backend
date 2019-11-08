@@ -120,35 +120,40 @@ func TestComments(t *testing.T) {
 			}
 		}
 	})
-	// playgrounds := store.Playgrounds{intermediatePlayground, farthestPlayground, nearestPlayground}
-	// client := stubClient{}
+	t.Run("DeleteComment DELETES a comment", func(t *testing.T) {
+		comment1 := store.Comment{
+			Author:  "test",
+			Content: "test",
+			ID:      1,
+		}
+		comment2 := store.Comment{
+			Author:  "test1",
+			Content: "test1",
+			ID:      2,
+		}
+		playground := store.Playground{
+			Comments: store.Comments{
+				comment1,
+				comment2,
+			},
+		}
+		cases := []int{1, 2}
+		for _, ID := range cases {
+			playground.DeleteComment(ID)
+			_, err := playground.FindComment(ID)
+			if err == nil {
+				t.Fatalf("There should be an error")
+			}
+		}
+	})
+	t.Run("DeleteComment returns an error if comment ID doesn't exist", func(t *testing.T) {
+		playground := store.Playground{}
 
-	// want := store.Playgrounds{
-	// 	nearestPlayground,
-	// 	intermediatePlayground,
-	// 	farthestPlayground,
-	// }
-
-	// got, _ := playgrounds.FindNearestPlaygrounds(client, "42 avenue de Flandre Paris")
-
-	// test.AssertPlaygrounds(t, got, want)
-	// t.Run("Find returns correct playground", func(t *testing.T) {
-	// 	playgrounds := setupPlaygrounds()
-	// 	want := playgrounds[0]
-
-	// 	got, _ := playgrounds.Find(1)
-
-	// 	test.AssertPlayground(t, got, want)
-	// })
-	// t.Run("Find returns error if playground doesn't exist", func(t *testing.T) {
-	// 	playgrounds := setupPlaygrounds()
-
-	// 	_, got := playgrounds.Find(0)
-	// 	assertError(t, got, store.ErrorNotFoundPlayground)
-
-	// 	_, got = playgrounds.Find(3)
-	// 	assertError(t, got, store.ErrorNotFoundPlayground)
-	// })
+		err := playground.DeleteComment(1)
+		if err == nil {
+			t.Fatalf("There should be an error")
+		}
+	})
 }
 
 func setupPlaygrounds() store.Playgrounds {

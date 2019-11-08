@@ -118,3 +118,13 @@ func (p *Playground) AddComment(comment Comment) error {
 	p.Comments = append(Comments{newComment}, p.Comments...)
 	return nil
 }
+
+func (p *Playground) DeleteComment(commentID int) error {
+	for index, comment := range p.Comments {
+		if comment.ID == commentID {
+			p.Comments = append(p.Comments[:index], p.Comments[index+1:]...)
+			return nil
+		}
+	}
+	return errors.New("Couldn't find comment")
+}
