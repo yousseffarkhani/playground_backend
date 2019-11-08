@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -475,6 +476,7 @@ func TestAPIs(t *testing.T) {
 				t.Run("Delete", func(t *testing.T) {
 					t.Run(" returns status accepted and deletes comment if request comes from the author", func(t *testing.T) {
 						req := test.NewDeleteRequest(t, "/api/playgrounds/1/comments/1")
+						req = setupRequestContext(req)
 						res := httptest.NewRecorder()
 						svr.ServeHTTP(res, req)
 
@@ -482,6 +484,7 @@ func TestAPIs(t *testing.T) {
 
 						req = test.NewGetRequest(t, "/api/playgrounds/1/comments")
 						res = httptest.NewRecorder()
+
 						svr.ServeHTTP(res, req)
 
 						var got store.Comments
@@ -494,26 +497,31 @@ func TestAPIs(t *testing.T) {
 								t.Errorf("This comment should be deleted")
 							}
 						}
-						// Deletes comment from author
 					})
-					/* t.Run(" returns status bad request (playground or comment doesn't exist)", func(t *testing.T) {
+					t.Run(" returns status bad request (playground or comment doesn't exist)", func(t *testing.T) {
 						cases := []string{
 							"/api/playgrounds/1000/comments/1",
 							"/api/playgrounds/1/comments/1000",
 						}
 						for _, URL := range cases {
-							req, err := http.NewRequest(http.MethodDelete, URL, nil)
-							if err != nil {
-								t.Fatalf("Couldn't generate request, %s", err)
-							}
+							req := test.NewDeleteRequest(t, URL)
 							res := httptest.NewRecorder()
-							// req = setupRequestContext(req)
+							req = setupRequestContext(req)
 
 							svr.ServeHTTP(res, req)
 
 							assertStatusCode(t, res, http.StatusBadRequest)
 						}
-					}) */
+					})
+					t.Run(" returns status bad request if comment doesn't belong to requester", func(t *testing.T) {
+						req := test.NewDeleteRequest(t, "/api/playgrounds/1/comments/2")
+						res := httptest.NewRecorder()
+						req = setupRequestContext(req)
+
+						svr.ServeHTTP(res, req)
+
+						assertStatusCode(t, res, http.StatusBadRequest)
+					})
 				})
 				/*	t.Run("Update", func(t *testing.T) {
 					t.Run(" returns status accepted and updates comment if request comes from the author", func(t *testing.T) {
@@ -554,10 +562,17 @@ func (m *mockPlaygroundStore) AddComment(playgroundID int, newComment store.Comm
 	return nil
 }
 
-func (m *mockPlaygroundStore) DeleteComment(playgroundID, commentID int) error {
-	_, index, err := m.playgrounds.Find(playgroundID)
+func (m *mockPlaygroundStore) DeleteComment(playgroundID, commentID int, username string) error {
+	playground, index, err := m.playgrounds.Find(playgroundID)
 	if err != nil {
 		return err
+	}
+	comment, err := playground.FindComment(commentID)
+	if err != nil {
+		return err
+	}
+	if !comment.IsAuthor(username) {
+		return errors.New("Requester is not the author")
 	}
 	err = m.playgrounds[index].DeleteComment(commentID)
 	if err != nil {

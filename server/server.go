@@ -192,47 +192,21 @@ func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (p *PlaygroundServer) deleteComment(w http.ResponseWriter, r *http.Request) {
-	// playgroundID, err := extractIDFromRequest(r, "ID")
-	// if err != nil {
-	// 	log.Println("Couldn't parse request parameter")
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	return
-	// }
-	// commentID, err := extractIDFromRequest(r, "commentID")
-	// if err != nil {
-	// 	log.Println("Couldn't parse request parameter")
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// err = p.database.MainPlaygroundStore.DeleteComment(playgroundID, commentID)
-	// if err != nil {
-	// 	log.Printf("Impossible de supprimer le commentaire, %s", err)
-	// 	w.WriteHeader(http.StatusBadRequest)
-	// 	return
-	// }
-	// playground := p.findPlaygroundFromRequestParameter(w, r)
-	w.WriteHeader(http.StatusAccepted)
-
-	// Extract playground and comment ID
-	/* claims, ok := r.Context().Value("claims").(*authentication.Claims)
+	claims, ok := r.Context().Value("claims").(*authentication.Claims)
 	if ok {
-		username := claims.Username
-		ID, err := extractIDFromRequest(r, "ID")
+		playgroundID, err := extractIDFromRequest(r, "ID")
 		if err != nil {
 			log.Println("Couldn't parse request parameter")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		err = r.ParseForm()
+		commentID, err := extractIDFromRequest(r, "commentID")
 		if err != nil {
-			log.Println("Couldn't parse request")
-			w.WriteHeader(http.StatusBadRequest)
+			log.Println("Couldn't parse request parameter")
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
-		err = p.database.MainPlaygroundStore.AddComment(ID, newComment)
-
+		err = p.database.MainPlaygroundStore.DeleteComment(playgroundID, commentID, claims.Username)
 		if err != nil {
 			log.Printf("Impossible de supprimer le commentaire, %s", err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -241,7 +215,7 @@ func (p *PlaygroundServer) deleteComment(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusAccepted)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
-	} */
+	}
 }
 
 func callbackHandler(w http.ResponseWriter, r *http.Request) {

@@ -307,7 +307,10 @@ func TestPlaygroundDatabase(t *testing.T) {
 	})
 	t.Run("Delete comment ", func(t *testing.T) {
 		t.Run("DELETES comment", func(t *testing.T) {
-			database.MainPlaygroundStore.DeleteComment(1, 1)
+			err := database.MainPlaygroundStore.DeleteComment(1, 1, "Youssef")
+			if err != nil {
+				t.Fatalf("Couldn't delete comment, %s", err)
+			}
 			playground, err := str.Playground(1)
 			if err != nil {
 				t.Fatalf("Couldn't get playground, %s", err)
@@ -322,7 +325,7 @@ func TestPlaygroundDatabase(t *testing.T) {
 			for _, IDs := range cases {
 				playgroundID := IDs[0]
 				commentID := IDs[1]
-				err := database.MainPlaygroundStore.DeleteComment(playgroundID, commentID)
+				err := database.MainPlaygroundStore.DeleteComment(playgroundID, commentID, "Youssef")
 				if err == nil {
 					t.Error("An error should be returned")
 				}

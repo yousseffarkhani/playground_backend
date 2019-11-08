@@ -19,7 +19,7 @@ type PlaygroundStore interface {
 	NewPlayground(newPlayground Playground)
 	DeletePlayground(ID int)
 	AddComment(playgroundID int, newComment Comment) error
-	DeleteComment(playgroundID, commentID int) error
+	DeleteComment(playgroundID, commentID int, username string) error
 }
 
 type PlaygroundDatabase struct {
@@ -86,10 +86,17 @@ func (s *SubmittedPlaygroundStore) AddComment(playgroundID int, newComment Comme
 	return nil
 }
 
-func (s *MainPlaygroundStore) DeleteComment(playgroundID, commentID int) error {
-	_, index, err := s.playgrounds.Find(playgroundID)
+func (s *MainPlaygroundStore) DeleteComment(playgroundID, commentID int, username string) error {
+	playground, index, err := s.playgrounds.Find(playgroundID)
 	if err != nil {
 		return err
+	}
+	comment, err := playground.FindComment(commentID)
+	if err != nil {
+		return err
+	}
+	if !comment.IsAuthor(username) {
+		return errors.New("Requester is not the author")
 	}
 	err = s.playgrounds[index].DeleteComment(commentID)
 	if err != nil {
@@ -98,7 +105,7 @@ func (s *MainPlaygroundStore) DeleteComment(playgroundID, commentID int) error {
 	return nil
 }
 
-func (s *SubmittedPlaygroundStore) DeleteComment(playgroundID, commentID int) error {
+func (s *SubmittedPlaygroundStore) DeleteComment(playgroundID, commentID int, username string) error {
 	// TODO refaire proprement
 	return nil
 }

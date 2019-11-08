@@ -128,3 +128,10 @@ func (p *Playground) DeleteComment(commentID int) error {
 	}
 	return errors.New("Couldn't find comment")
 }
+
+func (c Comment) IsAuthor(username string) bool {
+	if c.Author == username {
+		return true
+	}
+	return false
+}
