@@ -15,30 +15,29 @@ var ErrorNotFoundPlayground = errors.New("Playground doesn't exist")
 var ErrorNotFoundComment = errors.New("Comment doesn't exist")
 
 type Playground struct {
-	Name             string  `json:"name"`
-	Address          string  `json:"address"`
-	PostalCode       string  `json:"postal_code"`
-	City             string  `json:"city"`
-	Department       string  `json:"department"`
-	Long             float64 `json:"long"`
-	Lat              float64 `json:"lat"`
-	Coating          string  `json:"coating"`
-	Type             string  `json:"type"`
-	Open             bool    `json:"open"`
-	ID               int
-	Author           string
-	TimeOfSubmission time.Time
-	Comments         Comments
+	Name             string    `json:"name"`
+	Address          string    `json:"address"`
+	PostalCode       string    `json:"postal_code"`
+	City             string    `json:"city"`
+	Department       string    `json:"department"`
+	Long             float64   `json:"long"`
+	Lat              float64   `json:"lat"`
+	Coating          string    `json:"coating"`
+	Type             string    `json:"type"`
+	Open             bool      `json:"open"`
+	ID               int       `json:"id"`
+	Author           string    `json:"author"`
+	TimeOfSubmission time.Time `json:"time_of_submission"`
+	Comments         Comments  `json:"comments"`
 }
 
 type Playgrounds []Playground
 
 type Comment struct {
-	ID int
-	// PlaygroundID int
-	Content          string
-	Author           string
-	TimeOfSubmission time.Time
+	ID               int       `json:"id"`
+	Content          string    `json:"content"`
+	Author           string    `json:"author"`
+	TimeOfSubmission time.Time `json:"time_of_submission"`
 }
 
 type Comments []Comment
@@ -50,6 +49,15 @@ func NewPlaygroundsFromJSON(input io.Reader) (Playgrounds, error) {
 		return nil, fmt.Errorf("Unable to parse input %q into slice, '%v'", input, err)
 	}
 	return playgrounds, nil
+}
+
+func NewCommentFromJSON(input io.Reader) (Comment, error) {
+	var comment Comment
+	err := json.NewDecoder(input).Decode(&comment)
+	if err != nil {
+		return Comment{}, fmt.Errorf("Unable to parse input %q into slice, '%v'", input, err)
+	}
+	return comment, nil
 }
 
 func (p Playgrounds) Find(ID int) (Playground, int, error) {
@@ -123,6 +131,24 @@ func (p *Playground) DeleteComment(commentID int) error {
 	for index, comment := range p.Comments {
 		if comment.ID == commentID {
 			p.Comments = append(p.Comments[:index], p.Comments[index+1:]...)
+			return nil
+		}
+	}
+	return errors.New("Couldn't find comment")
+}
+
+func (p *Playground) UpdateComment(updatedComment Comment) error {
+	for index, comment := range p.Comments {
+		if comment.ID == updatedComment.ID {
+			if comment.Author != updatedComment.Author {
+				return errors.New("Not the same author")
+			}
+			content := strings.TrimSpace(updatedComment.Content)
+			if content == "" {
+				return ErrEmptyField
+			}
+			p.Comments[index].Content = content
+			p.Comments[index].TimeOfSubmission = updatedComment.TimeOfSubmission
 			return nil
 		}
 	}

@@ -116,7 +116,10 @@ func newRouter(svr *PlaygroundServer) *mux.Router {
 	// POST
 	router.Handle(APIComments, svr.middlewares["authorized"].ThenFunc(svr.addComment)).Methods(http.MethodPost)
 	// DELETE
+	// TODO: Mettre en commun et créer un if method == PUT ou DELETE pour différencier les 2
 	router.Handle(APIComment, svr.middlewares["authorized"].ThenFunc(svr.deleteComment)).Methods(http.MethodDelete)
+	// PUT
+	router.Handle(APIComment, svr.middlewares["authorized"].ThenFunc(svr.modifyComment)).Methods(http.MethodPut)
 
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, URLHome, http.StatusFound)
@@ -209,6 +212,43 @@ func (p *PlaygroundServer) deleteComment(w http.ResponseWriter, r *http.Request)
 		err = p.database.MainPlaygroundStore.DeleteComment(playgroundID, commentID, claims.Username)
 		if err != nil {
 			log.Printf("Impossible de supprimer le commentaire, %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func (p *PlaygroundServer) modifyComment(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value("claims").(*authentication.Claims)
+	if ok {
+		playgroundID, err := extractIDFromRequest(r, "ID")
+		if err != nil {
+			log.Println("Couldn't parse request parameter")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		commentID, err := extractIDFromRequest(r, "commentID")
+		if err != nil {
+			log.Println("Couldn't parse request parameter")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		updatedComment, err := store.NewCommentFromJSON(r.Body)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		updatedComment.Content = strings.TrimSpace(updatedComment.Content)
+		updatedComment.TimeOfSubmission = time.Now()
+		updatedComment.ID = commentID
+		updatedComment.Author = claims.Username
+
+		err = p.database.MainPlaygroundStore.UpdateComment(playgroundID, updatedComment)
+		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

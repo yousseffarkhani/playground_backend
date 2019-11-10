@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/yousseffarkhani/playground/backend2/test"
@@ -72,62 +73,101 @@ func TestPlaygrounds(t *testing.T) {
 }
 
 func TestComments(t *testing.T) {
-	t.Run("AddComment adds a new comment with correct ID", func(t *testing.T) {
-		playground := store.Playground{}
-		cases := store.Comments{
-			store.Comment{
+	t.Run("AddComment ", func(t *testing.T) {
+		t.Run("ADDS a new comment with correct ID", func(t *testing.T) {
+			playground := store.Playground{}
+			cases := store.Comments{
+				store.Comment{
+					Author:  "test",
+					Content: "test",
+				},
+				store.Comment{
+					Author:  "test1",
+					Content: "test1",
+				},
+			}
+			for index, comment := range cases {
+				err := playground.AddComment(comment)
+				if err != nil {
+					t.Fatalf("Couldn't add comment, %s", err)
+				}
+				got, err := playground.FindComment(index + 1)
+				if err != nil {
+					t.Fatalf("Couldn't get comment, %s", err)
+				}
+				comment.ID = index + 1
+				want := comment
+
+				if !reflect.DeepEqual(got, want) {
+					t.Errorf("got : %v, want : %v", got, want)
+				}
+			}
+		})
+		t.Run("RETURNS an error if content or author empty", func(t *testing.T) {
+			playground := store.Playground{}
+			cases := store.Comments{
+				store.Comment{
+					Author:  "  ",
+					Content: "test",
+				},
+				store.Comment{
+					Author:  "test1",
+					Content: "   ",
+				},
+			}
+			for _, comment := range cases {
+				err := playground.AddComment(comment)
+				if err == nil {
+					t.Fatalf("There should be an error")
+				}
+			}
+		})
+	})
+
+	t.Run("DeleteComment ", func(t *testing.T) {
+		t.Run("DELETES a comment", func(t *testing.T) {
+			comment1 := store.Comment{
 				Author:  "test",
 				Content: "test",
-			},
-			store.Comment{
+				ID:      1,
+			}
+			comment2 := store.Comment{
 				Author:  "test1",
 				Content: "test1",
-			},
-		}
-		for index, comment := range cases {
-			err := playground.AddComment(comment)
-			if err != nil {
-				t.Fatalf("Couldn't add comment, %s", err)
+				ID:      2,
 			}
-			got, err := playground.FindComment(index + 1)
-			if err != nil {
-				t.Fatalf("Couldn't get comment, %s", err)
+			playground := store.Playground{
+				Comments: store.Comments{
+					comment1,
+					comment2,
+				},
 			}
-			comment.ID = index + 1
-			want := comment
+			cases := []int{1, 2}
+			for _, ID := range cases {
+				playground.DeleteComment(ID)
+				_, err := playground.FindComment(ID)
+				if err == nil {
+					t.Fatalf("There should be an error")
+				}
+			}
+		})
+		t.Run("RETURNS an error if comment ID doesn't exist", func(t *testing.T) {
+			playground := store.Playground{}
 
-			if !reflect.DeepEqual(got, want) {
-				t.Errorf("got : %v, want : %v", got, want)
-			}
-		}
-	})
-	t.Run("AddComment returns an error if content or author empty", func(t *testing.T) {
-		playground := store.Playground{}
-		cases := store.Comments{
-			store.Comment{
-				Author:  "  ",
-				Content: "test",
-			},
-			store.Comment{
-				Author:  "test1",
-				Content: "   ",
-			},
-		}
-		for _, comment := range cases {
-			err := playground.AddComment(comment)
+			err := playground.DeleteComment(1)
 			if err == nil {
 				t.Fatalf("There should be an error")
 			}
-		}
+		})
 	})
-	t.Run("DeleteComment DELETES a comment", func(t *testing.T) {
+	t.Run("UpdateComment ", func(t *testing.T) {
 		comment1 := store.Comment{
-			Author:  "test",
+			Author:  "Youssef",
 			Content: "test",
 			ID:      1,
 		}
 		comment2 := store.Comment{
-			Author:  "test1",
+			Author:  "Youssef",
 			Content: "test1",
 			ID:      2,
 		}
@@ -137,22 +177,61 @@ func TestComments(t *testing.T) {
 				comment2,
 			},
 		}
-		cases := []int{1, 2}
-		for _, ID := range cases {
-			playground.DeleteComment(ID)
-			_, err := playground.FindComment(ID)
-			if err == nil {
-				t.Fatalf("There should be an error")
+		t.Run("UPDATES comment content (and trims it) and time of submission", func(t *testing.T) {
+			cases := []store.Comment{
+				store.Comment{
+					Author:  "Youssef",
+					Content: "    test2  ",
+					ID:      1,
+				},
+				store.Comment{
+					Author:  "Youssef",
+					Content: "  test2    ",
+					ID:      2,
+				},
 			}
-		}
-	})
-	t.Run("DeleteComment returns an error if comment ID doesn't exist", func(t *testing.T) {
-		playground := store.Playground{}
+			for _, updatedComment := range cases {
+				playground.UpdateComment(updatedComment)
 
-		err := playground.DeleteComment(1)
-		if err == nil {
-			t.Fatalf("There should be an error")
-		}
+				playground, err := playground.FindComment(updatedComment.ID)
+				if err != nil {
+					t.Fatalf("There shouldn't be an error, %s", err)
+				}
+
+				got := playground.Content
+				want := strings.TrimSpace(updatedComment.Content)
+				if got != want {
+					t.Errorf("Got : %q, want : %q", got, want)
+				}
+			}
+		})
+		t.Run("RETURNS an error ", func(t *testing.T) {
+			cases := map[string]store.Comment{
+				"if author isn't the same as original one": store.Comment{
+					Author:  "Clélia",
+					Content: "test2",
+					ID:      1,
+				},
+				"if comment ID doesn't exist": store.Comment{
+					Author:  "test1",
+					Content: "test2",
+					ID:      3,
+				},
+				"if updated comment content empty": store.Comment{
+					Author:  "test1",
+					Content: "   ",
+					ID:      2,
+				},
+			}
+			for errorDescription, updatedComment := range cases {
+				t.Run(errorDescription, func(t *testing.T) {
+					err := playground.UpdateComment(updatedComment)
+					if err == nil {
+						t.Errorf("There should be an error")
+					}
+				})
+			}
+		})
 	})
 }
 

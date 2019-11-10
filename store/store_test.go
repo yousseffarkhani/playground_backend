@@ -3,6 +3,7 @@ package store_test
 import (
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -302,6 +303,59 @@ func TestPlaygroundDatabase(t *testing.T) {
 				if err == nil {
 					t.Error("An error should be returned")
 				}
+			}
+		})
+	})
+	t.Run("Update comment ", func(t *testing.T) {
+		t.Run("UPDATES a comment", func(t *testing.T) {
+			updatedComment := store.Comment{
+				Author:  "Youssef",
+				Content: "test123",
+				ID:      1,
+			}
+			err := database.MainPlaygroundStore.UpdateComment(1, updatedComment)
+			if err != nil {
+				t.Fatalf("Couldn't update comment, %s", err)
+			}
+
+			playground, err := str.Playground(1)
+			if err != nil {
+				t.Fatalf("Couldn't get playground, %s", err)
+			}
+
+			comment, err := playground.FindComment(1)
+			if err != nil {
+				t.Fatalf("Couldn't get comment, %s", err)
+			}
+			if !reflect.DeepEqual(comment, updatedComment) {
+				t.Fatalf("Got : %+v, want : %+v", comment, updatedComment)
+			}
+		})
+		t.Run("RETURNS an error ", func(t *testing.T) {
+			cases := map[string]store.Comment{
+				"if author isn't the same as original one": store.Comment{
+					Author:  "Clélia",
+					Content: "test2",
+					ID:      1,
+				},
+				"if comment ID doesn't exist": store.Comment{
+					Author:  "test1",
+					Content: "test2",
+					ID:      3,
+				},
+				"if updated comment content empty": store.Comment{
+					Author:  "test1",
+					Content: "   ",
+					ID:      2,
+				},
+			}
+			for errorDescription, updatedComment := range cases {
+				t.Run(errorDescription, func(t *testing.T) {
+					err := database.MainPlaygroundStore.UpdateComment(1, updatedComment)
+					if err == nil {
+						t.Errorf("There should be an error")
+					}
+				})
 			}
 		})
 	})

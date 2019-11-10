@@ -102,14 +102,52 @@
     <div class="media-body">
         <h5 class="mt-0"> {{.Author}}<span class="text-secondary"> |
                 {{.TimeOfSubmission.Format "02-01-2006 15:04:05"}}</span></h5>
-        <p>{{.Content}}</p>
-        {{if eq $.Username .Author}}
-        <button type="button" class="btn btn-primary btn-sm" id="modifyComment">Modifier</button>
-        <button type="button" class="btn btn-danger btn-sm" onclick="deleteComment({{.ID}})">Supprimer</button>
-        {{end}}
+        <div id="comment-{{.ID}}">
+            <p id="content-{{.ID}}">{{.Content}}</p>
+            {{if eq $.Username .Author}}
+            <button type="button" class="btn btn-primary btn-sm" onclick="replaceCommentDiv({{.ID}})">Modifier</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="deleteComment({{.ID}})">Supprimer</button>
+            {{end}}
+        </div>
     </div>
 </div>
+{{ end }}
 <script>
+    function replaceCommentDiv(ID) {
+        const comment = document.querySelector(`#comment-${ID}`);
+        const content = document.querySelector(`#content-${ID}`);
+        comment.innerHTML = `
+                    <input value="${content.innerText}" id="content-${ID}">
+                <button type="button" class="btn btn-primary btn-sm" onclick="updateComment(${ID})">Valider</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="cancelUpdateComment(${ID},'${content.innerText}')">Annuler</button>`;
+    }
+
+    function cancelUpdateComment(ID, content) {
+        const comment = document.querySelector(`#comment-${ID}`);
+        comment.innerHTML = `
+            <p id="content-${ID}">${content}</p>
+            <button type="button" class="btn btn-primary btn-sm" onclick="replaceCommentDiv(${ID})">Modifier</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="deleteComment(${ID})">Supprimer</button>`;
+    }
+
+    function updateComment(ID) {
+        const input = document.querySelector(`#content-${ID}`)
+        fetch(`/api/playgrounds/{{$.Data.ID}}/comments/${ID}`, {
+            method: "PUT",
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ content: input.value })
+        }).then(res => {
+            if (res.status === 202) {
+                window.location.reload();
+            } else {
+                console.log("error")
+            }
+        })
+    }
+
     function deleteComment(commentID) {
         fetch(`/api/playgrounds/{{$.Data.ID}}/comments/${commentID}`, {
             method: "DELETE"
@@ -122,9 +160,42 @@
         });
     }
 </script>
-{{ end }}
 {{else}}
 <h1>Il n'y a pas de commentaires pour le moment.</h1>
+{{end}}
+<script>
+    /* Displays map */
+    const long = {{ .Data.Long }}
+    const lat = {{ .Data.Lat }}
+    function myMap() {
+        var mapProp = {
+            center: new google.maps.LatLng(lat, long),
+            zoom: 13,
+        };
+        var map = new google.maps.Map(document.getElementById("map"), mapProp);
+        var marker = new google.maps.Marker({ position: new google.maps.LatLng(lat, long) });
+
+        marker.setMap(map);
+        var infowindowContent = `
+            <h5>{{ .Data.Name }}</h5>
+            <p>{{ .Data.Address }}, {{ .Data.PostalCode }} {{ .Data.City }}</p>
+            `
+        var infowindow = new google.maps.InfoWindow({
+            content: infowindowContent
+        });
+
+        infowindow.open(map, marker);
+    }
+
+    const navLinks = document.querySelectorAll(".nav-link")
+    const navLink = document.querySelector("#playgrounds")
+
+    navLinks.forEach(navLink => {
+        navLink.classList.remove("active")
+    })
+    navLink.classList.add("active")
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{.GOOGLE_MAPS_API_KEY}}&callback=myMap"></script>
 {{end}}
 
 <!-- Comment with nested comments -->
@@ -161,37 +232,3 @@
         </div>
     </div>
 </div> -->
-<script>
-    /* Displays map */
-    const long = {{ .Data.Long }}
-    const lat = {{ .Data.Lat }}
-    function myMap() {
-        var mapProp = {
-            center: new google.maps.LatLng(lat, long),
-            zoom: 13,
-        };
-        var map = new google.maps.Map(document.getElementById("map"), mapProp);
-        var marker = new google.maps.Marker({ position: new google.maps.LatLng(lat, long) });
-
-        marker.setMap(map);
-        var infowindowContent = `
-            <h5>{{ .Data.Name }}</h5>
-            <p>{{ .Data.Address }}, {{ .Data.PostalCode }} {{ .Data.City }}</p>
-            `
-        var infowindow = new google.maps.InfoWindow({
-            content: infowindowContent
-        });
-
-        infowindow.open(map, marker);
-    }
-
-    const navLinks = document.querySelectorAll(".nav-link")
-    const navLink = document.querySelector("#playgrounds")
-
-    navLinks.forEach(navLink => {
-        navLink.classList.remove("active")
-    })
-    navLink.classList.add("active")
-</script>
-<script src="https://maps.googleapis.com/maps/api/js?key={{.GOOGLE_MAPS_API_KEY}}&callback=myMap"></script>
-{{end}}

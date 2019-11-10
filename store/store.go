@@ -20,6 +20,7 @@ type PlaygroundStore interface {
 	DeletePlayground(ID int)
 	AddComment(playgroundID int, newComment Comment) error
 	DeleteComment(playgroundID, commentID int, username string) error
+	UpdateComment(playgroundID int, newComment Comment) error
 }
 
 type PlaygroundDatabase struct {
@@ -69,12 +70,12 @@ func New(file *os.File) (*MainPlaygroundStore, error) {
 	return &MainPlaygroundStore{playgrounds: playgrounds}, nil
 }
 
-func (s *MainPlaygroundStore) AddComment(playgroundID int, newComment Comment) error {
-	_, index, err := s.playgrounds.Find(playgroundID)
+func (m *MainPlaygroundStore) AddComment(playgroundID int, newComment Comment) error {
+	_, index, err := m.playgrounds.Find(playgroundID)
 	if err != nil {
 		return err
 	}
-	err = s.playgrounds[index].AddComment(newComment)
+	err = m.playgrounds[index].AddComment(newComment)
 	if err != nil {
 		return err
 	}
@@ -86,8 +87,8 @@ func (s *SubmittedPlaygroundStore) AddComment(playgroundID int, newComment Comme
 	return nil
 }
 
-func (s *MainPlaygroundStore) DeleteComment(playgroundID, commentID int, username string) error {
-	playground, index, err := s.playgrounds.Find(playgroundID)
+func (m *MainPlaygroundStore) DeleteComment(playgroundID, commentID int, username string) error {
+	playground, index, err := m.playgrounds.Find(playgroundID)
 	if err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func (s *MainPlaygroundStore) DeleteComment(playgroundID, commentID int, usernam
 	if !comment.IsAuthor(username) {
 		return errors.New("Requester is not the author")
 	}
-	err = s.playgrounds[index].DeleteComment(commentID)
+	err = m.playgrounds[index].DeleteComment(commentID)
 	if err != nil {
 		return err
 	}
@@ -110,9 +111,26 @@ func (s *SubmittedPlaygroundStore) DeleteComment(playgroundID, commentID int, us
 	return nil
 }
 
-func (s *MainPlaygroundStore) AllPlaygrounds() Playgrounds {
-	s.playgrounds.sortByName()
-	return s.playgrounds
+func (s *SubmittedPlaygroundStore) UpdateComment(playgroundID int, updatedComment Comment) error {
+	// TODO refaire proprement
+	return nil
+}
+
+func (m *MainPlaygroundStore) UpdateComment(playgroundID int, updatedComment Comment) error {
+	_, index, err := m.playgrounds.Find(playgroundID)
+	if err != nil {
+		return err
+	}
+	err = m.playgrounds[index].UpdateComment(updatedComment)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *MainPlaygroundStore) AllPlaygrounds() Playgrounds {
+	m.playgrounds.sortByName()
+	return m.playgrounds
 }
 
 func (s *SubmittedPlaygroundStore) AllPlaygrounds() Playgrounds {
@@ -120,8 +138,8 @@ func (s *SubmittedPlaygroundStore) AllPlaygrounds() Playgrounds {
 	return s.playgrounds
 }
 
-func (s *MainPlaygroundStore) Playground(ID int) (Playground, error) {
-	playground, _, err := s.playgrounds.Find(ID)
+func (m *MainPlaygroundStore) Playground(ID int) (Playground, error) {
+	playground, _, err := m.playgrounds.Find(ID)
 	if err != nil {
 		return Playground{}, ErrorNotFoundPlayground
 	}
@@ -136,9 +154,9 @@ func (s *SubmittedPlaygroundStore) Playground(ID int) (Playground, error) {
 	return playground, nil
 }
 
-func (s *MainPlaygroundStore) NewPlayground(newPlayground Playground) {
-	newPlayground.ID = len(s.playgrounds) + 1
-	s.playgrounds = append(s.playgrounds, newPlayground)
+func (m *MainPlaygroundStore) NewPlayground(newPlayground Playground) {
+	newPlayground.ID = len(m.playgrounds) + 1
+	m.playgrounds = append(m.playgrounds, newPlayground)
 }
 
 func (s *SubmittedPlaygroundStore) NewPlayground(newPlayground Playground) {
@@ -146,7 +164,7 @@ func (s *SubmittedPlaygroundStore) NewPlayground(newPlayground Playground) {
 	s.playgrounds = append(s.playgrounds, newPlayground)
 }
 
-func (s *MainPlaygroundStore) DeletePlayground(ID int) {
+func (m *MainPlaygroundStore) DeletePlayground(ID int) {
 	// TODO
 }
 

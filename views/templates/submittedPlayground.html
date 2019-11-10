@@ -127,10 +127,7 @@
             body: searchParams,
         }).then(res => {
             if (res.status === 202) {
-                resultDiv.classList.add("alert-success");
-                resultDiv.classList.remove("alert-danger");
-                resultDiv.innerHTML = "Terrain ajouté";
-                resetInputValues();
+                window.location.href = "/submittedPlaygrounds"
                 return
             }
             resultDiv.classList.remove("alert-success");

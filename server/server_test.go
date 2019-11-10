@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -387,8 +388,7 @@ func TestAPIs(t *testing.T) {
 								assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
 							})
 							t.Run("returns a comment", func(t *testing.T) {
-								var got store.Comment
-								err := json.NewDecoder(res.Body).Decode(&got)
+								got, err := store.NewCommentFromJSON(res.Body)
 								if err != nil {
 									t.Fatalf("Unable to parse input %q into comment, '%v'", res.Body, err)
 								}
@@ -430,14 +430,15 @@ func TestAPIs(t *testing.T) {
 						}
 					})
 				})
-				t.Run("Post", func(t *testing.T) {
+				t.Run("POST", func(t *testing.T) {
 					t.Run(" records a new comment trimmed and increments ID", func(t *testing.T) {
+						commentContent := "   This is a nice playground"
 						want := store.Comment{
 							Author:  "Youssef",
-							Content: "   This is a nice playground",
+							Content: strings.TrimSpace(commentContent),
 							ID:      3,
 						}
-						req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", fmt.Sprintf("comment=  %s", want.Content))
+						req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", fmt.Sprintf("comment=  %s", commentContent))
 						req = setupRequestContext(req)
 						res := httptest.NewRecorder()
 
@@ -448,11 +449,11 @@ func TestAPIs(t *testing.T) {
 						req = test.NewGetRequest(t, "/api/playgrounds/1/comments/3")
 						res = httptest.NewRecorder()
 						svr.ServeHTTP(res, req)
-						var got store.Comment
-						json.NewDecoder(res.Body).Decode(&got)
-						if reflect.DeepEqual(got, want) {
-							t.Errorf("got : %+v, want : %+v", got, want)
+						got, err := store.NewCommentFromJSON(res.Body)
+						if err != nil {
+							t.Fatalf("Unable to parse input %q into comment, '%v'", res.Body, err)
 						}
+						test.AssertComment(t, got, want)
 					})
 					t.Run(" returns a status bad request if comment is empty", func(t *testing.T) {
 						req := test.NewPostFormRequest(t, "/api/playgrounds/1/comments", "comment=   ")
@@ -473,7 +474,7 @@ func TestAPIs(t *testing.T) {
 						assertStatusCode(t, res, http.StatusBadRequest)
 					})
 				})
-				t.Run("Delete", func(t *testing.T) {
+				t.Run("DELETE", func(t *testing.T) {
 					t.Run(" returns status accepted and deletes comment if request comes from the author", func(t *testing.T) {
 						req := test.NewDeleteRequest(t, "/api/playgrounds/1/comments/1")
 						req = setupRequestContext(req)
@@ -523,31 +524,87 @@ func TestAPIs(t *testing.T) {
 						assertStatusCode(t, res, http.StatusBadRequest)
 					})
 				})
-				/*	t.Run("Update", func(t *testing.T) {
-					t.Run(" returns status accepted and updates comment if request comes from the author", func(t *testing.T) {
-						req := test.NewGetRequest(t, "/api/playgrounds/1/comments/1/update")
+				t.Run("PUT", func(t *testing.T) {
+					t.Run(" UPDATES a comment trimmed", func(t *testing.T) {
+						commentContent := "   Small basket  "
+						want := store.Comment{
+							Author:  "Youssef",
+							Content: strings.TrimSpace(commentContent),
+							ID:      3,
+						}
+
+						JSONEncodedComment, err := json.Marshal(store.Comment{
+							Content: commentContent,
+						})
+						if err != nil {
+							t.Fatalf("Couldn't encode string, %s", err)
+						}
+						req := test.NewPutRequest(t, "/api/playgrounds/1/comments/3", string(JSONEncodedComment))
+						req = setupRequestContext(req)
 						res := httptest.NewRecorder()
+
 						svr.ServeHTTP(res, req)
 
 						assertStatusCode(t, res, http.StatusAccepted)
-					})
-					t.Run(" returns status bad request (playground or comment doesn't exist)", func(t *testing.T) {
-						cases := []string{
-							"/api/playgrounds/1000/comments/1/update",
-							"/api/playgrounds/1/comments/1000/update",
+
+						req = test.NewGetRequest(t, "/api/playgrounds/1/comments/3")
+						res = httptest.NewRecorder()
+						svr.ServeHTTP(res, req)
+
+						got, err := store.NewCommentFromJSON(res.Body)
+						if err != nil {
+							t.Fatalf("Unable to parse input %q into comment, '%v'", res.Body, err)
 						}
-						for _, c := range cases {
-							req := test.NewGetRequest(t, c)
+
+						test.AssertComment(t, got, want)
+					})
+					t.Run(" returns a status bad request if comment is empty", func(t *testing.T) {
+						commentContent := "     "
+						JSONEncodedComment, err := json.Marshal(store.Comment{
+							Content: commentContent,
+						})
+						if err != nil {
+							t.Fatalf("Couldn't encode string, %s", err)
+						}
+						req := test.NewPutRequest(t, "/api/playgrounds/1/comments/3", string(JSONEncodedComment))
+						req = setupRequestContext(req)
+						res := httptest.NewRecorder()
+
+						svr.ServeHTTP(res, req)
+
+						assertStatusCode(t, res, http.StatusBadRequest)
+					})
+					t.Run(" returns status not found if playground or comment doesn't exist", func(t *testing.T) {
+						cases := []string{
+							"/api/playgrounds/1000/comments/1",
+							"/api/playgrounds/1/comments/1000",
+						}
+						for _, URL := range cases {
+							req := test.NewPutRequest(t, URL, "")
 							res := httptest.NewRecorder()
+							req = setupRequestContext(req)
+
 							svr.ServeHTTP(res, req)
 
 							assertStatusCode(t, res, http.StatusBadRequest)
 						}
 					})
-				}) */
+				})
 			})
 		})
 	})
+}
+
+func (m *mockPlaygroundStore) UpdateComment(playgroundID int, updatedComment store.Comment) error {
+	_, index, err := m.playgrounds.Find(playgroundID)
+	if err != nil {
+		return err
+	}
+	err = m.playgrounds[index].UpdateComment(updatedComment)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *mockPlaygroundStore) AddComment(playgroundID int, newComment store.Comment) error {
