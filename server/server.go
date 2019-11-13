@@ -2,11 +2,11 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"log"
+	"math"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -16,58 +16,96 @@ import (
 	"github.com/markbates/goth/gothic"
 
 	"github.com/yousseffarkhani/playground/backend2/authentication"
-	"github.com/yousseffarkhani/playground/backend2/store"
 
 	"github.com/gorilla/mux"
 )
 
 const (
-	// Views
-	URLHome                 = "/"
-	URLLogin                = "/login"
-	URLLogout               = "/logout"
-	URLPlaygrounds          = "/playgrounds"
-	URLPlayground           = URLPlaygrounds + "/{ID}"
-	URLSubmitPlayground     = URLPlaygrounds + "/submit"
-	URLSubmittedPlaygrounds = "/submittedPlaygrounds"
-	URLSubmittedPlayground  = URLSubmittedPlaygrounds + "/{ID}"
-	URLContact              = "/contact" // TODO
-
-	// APIs
-	APIPlaygrounds          = "/api/playgrounds"
-	APIPlayground           = APIPlaygrounds + "/{ID}"
-	APINearestPlaygrounds   = "/api/nearestPlaygrounds"
-	APIComments             = APIPlayground + "/comments"
-	APIComment              = APIComments + "/{commentID}"
-	APISubmittedPlaygrounds = "/api/submittedPlaygrounds"
-	APISubmittedPlayground  = APISubmittedPlaygrounds + "/{ID}"
-	// Other
 	JsonContentType    = "application/json"
 	HtmlContentType    = "text/html; charset=utf-8"
 	GzipAcceptEncoding = "gzip"
 )
 
 type PlaygroundServer struct {
-	database  store.PlaygroundDatabase
-	apiClient store.GeolocationClient
+	database  Database
+	apiClient GeolocationClient
 	http.Handler
 	views       map[string]View
 	middlewares map[string]Middleware
 }
+
+type GeolocationClient interface {
+	GetLongAndLat(address string) (long, lat float64, err error)
+}
+
+type Database interface {
+	PlaygroundStore
+	SubmittedPlaygroundStore
+	CommentStore
+}
+
+type PlaygroundStore interface {
+	GetAllPlaygrounds() Playgrounds
+	GetPlayground(ID int) Playground
+	AddPlayground(newPlayground Playground) error
+}
+
+type SubmittedPlaygroundStore interface {
+	GetAllSubmittedPlaygrounds() Playgrounds
+	GetSubmittedPlayground(ID int) Playground
+	DeleteSubmittedPlayground(ID int) error
+	SubmitPlayground(newPlayground Playground)
+}
+
+type CommentStore interface {
+	GetAllComments(playgroundID int) Comments
+	GetComment(playgroundID, commentID int) Comment
+	AddComment(playgroundID int, newComment Comment) error
+	DeleteComment(playgroundID, commentID int) error
+	ModifyComment(playgroundID, commentID int, updatedComment Comment) error
+}
+
+type Playground struct {
+	Name             string    `json:"name"`
+	Address          string    `json:"address"`
+	PostalCode       string    `json:"postal_code"`
+	City             string    `json:"city"`
+	Department       string    `json:"department"`
+	Long             float64   `json:"long"`
+	Lat              float64   `json:"lat"`
+	Coating          string    `json:"coating"`
+	Type             string    `json:"type"`
+	Open             bool      `json:"open"`
+	ID               int       `json:"id"`
+	Author           string    `json:"author"`
+	TimeOfSubmission time.Time `json:"time_of_submission"`
+	Draft            bool
+}
+
+type Playgrounds []Playground
+
+type Comment struct {
+	ID               int       `json:"id"`
+	PlaygroundID     int       `json:"playground_id"`
+	Content          string    `json:"content"`
+	Author           string    `json:"author"`
+	TimeOfSubmission time.Time `json:"time_of_submission"`
+}
+
+type Comments []Comment
 
 type Middleware interface {
 	ThenFunc(finalPage func(http.ResponseWriter, *http.Request)) http.Handler
 }
 
 type View interface {
-	Render(w io.Writer, r *http.Request, data RenderingData) error
+	Render(w http.ResponseWriter, r *http.Request, data RenderingData) error
 }
 
-func New(playgroundStore store.PlaygroundStore, client store.GeolocationClient, views map[string]View, middlewares map[string]Middleware) *PlaygroundServer {
+func New(database Database, apiClient GeolocationClient, views map[string]View, middlewares map[string]Middleware) *PlaygroundServer {
 	svr := new(PlaygroundServer)
-	svr.database.MainPlaygroundStore = playgroundStore
-	svr.database.SubmittedPlaygroundStore = &store.SubmittedPlaygroundStore{}
-	svr.apiClient = client
+	svr.database = database
+	svr.apiClient = apiClient
 	svr.views = views
 	svr.middlewares = middlewares
 	router := newRouter(svr)
@@ -75,187 +113,77 @@ func New(playgroundStore store.PlaygroundStore, client store.GeolocationClient, 
 	return svr
 }
 
-func newRouter(svr *PlaygroundServer) *mux.Router {
-	router := mux.NewRouter()
-	router.HandleFunc("/sw.js", serveSW).Methods(http.MethodGet)
-
-	// Views
-	router.Handle(URLHome, svr.middlewares["refresh"].ThenFunc(svr.homeHandler)).Methods(http.MethodGet)
-	router.Handle(URLPlaygrounds, svr.middlewares["refresh"].ThenFunc(svr.playgroundsHandler)).Methods(http.MethodGet)
-	router.Handle(URLSubmitPlayground, svr.middlewares["authorized"].ThenFunc(svr.submitPlaygroundHandler)).Methods(http.MethodGet)
-	router.Handle(URLPlayground, svr.middlewares["refresh"].ThenFunc(svr.playgroundHandler)).Methods(http.MethodGet)
-	router.Handle(URLSubmittedPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.submittedPlaygroundsHandler)).Methods(http.MethodGet)
-	router.Handle(URLSubmittedPlayground, svr.middlewares["authorized"].ThenFunc(svr.submittedPlaygroundHandler)).Methods(http.MethodGet)
-	router.Handle(URLLogin, svr.middlewares["isLogged"].ThenFunc(svr.loginHandler)).Methods(http.MethodGet)
-	router.HandleFunc(URLLogout, logoutHandler).Methods(http.MethodGet)
-	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
-	// TODO : Put back when main.go is in /cmd file
-	router.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("../static"))))
-
-	// Authentication
-	router.HandleFunc("/auth/{provider}", gothic.BeginAuthHandler).Methods(http.MethodGet)
-	router.HandleFunc("/auth/callback/{provider}", callbackHandler)
-
-	// API
-	// Playground
-	// GET
-	router.HandleFunc(APIPlaygrounds, svr.getAllPlaygrounds).Methods(http.MethodGet)
-	router.HandleFunc(APIPlaygrounds+"/", svr.getAllPlaygrounds).Methods(http.MethodGet)
-	router.HandleFunc(APIPlayground, svr.getPlayground).Methods(http.MethodGet)
-	router.HandleFunc(APINearestPlaygrounds, svr.getNearestPlaygrounds).Methods(http.MethodGet)
-	router.HandleFunc(APISubmittedPlaygrounds, svr.getAllSubmittedPlaygrounds).Methods(http.MethodGet)
-	// POST
-	router.Handle(APISubmittedPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.submitPlayground)).Methods(http.MethodPost)
-	router.Handle(APIPlaygrounds, svr.middlewares["authorized"].ThenFunc(svr.addPlayground)).Methods(http.MethodPost)
-	router.Handle(APISubmittedPlayground, svr.middlewares["authorized"].ThenFunc(svr.deleteSubmittedPlayground)).Methods(http.MethodPost)
-
-	// Comment
-	// GET
-	router.HandleFunc(APIComments, svr.getAllComments).Methods(http.MethodGet)
-	router.HandleFunc(APIComment, svr.getComment).Methods(http.MethodGet)
-	// POST
-	router.Handle(APIComments, svr.middlewares["authorized"].ThenFunc(svr.addComment)).Methods(http.MethodPost)
-	// DELETE
-	// TODO: Mettre en commun et créer un if method == PUT ou DELETE pour différencier les 2
-	router.Handle(APIComment, svr.middlewares["authorized"].ThenFunc(svr.deleteComment)).Methods(http.MethodDelete)
-	// PUT
-	router.Handle(APIComment, svr.middlewares["authorized"].ThenFunc(svr.modifyComment)).Methods(http.MethodPut)
-
-	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, URLHome, http.StatusFound)
-	}).Methods(http.MethodGet)
-
-	return router
+func serveSWHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "sw.js")
 }
 
-func (p *PlaygroundServer) getAllComments(w http.ResponseWriter, r *http.Request) {
-	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
-		comments := playground.Comments
-		if len(comments) == 0 {
-			comments = store.Comments{}
-		}
-		err = encodeToJson(w, comments)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
+func (p *PlaygroundServer) homeHandler(w http.ResponseWriter, r *http.Request) {
+	p.renderView(w, r, "home", nil)
 }
 
-func (p *PlaygroundServer) getComment(w http.ResponseWriter, r *http.Request) {
-	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
-		commentID, err := extractIDFromRequest(r, "commentID")
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		comment, err := playground.FindComment(commentID)
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		err = encodeToJson(w, comment)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
+func (p *PlaygroundServer) playgroundsHandler(w http.ResponseWriter, r *http.Request) {
+	p.renderView(w, r, "playgrounds", p.database.GetAllPlaygrounds())
 }
 
-func (p *PlaygroundServer) addComment(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value("claims").(*authentication.Claims)
-	if ok {
-		username := claims.Username
-		ID, err := extractIDFromRequest(r, "ID")
-		if err != nil {
-			log.Println("Couldn't parse request parameter")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		err = r.ParseForm()
-		if err != nil {
-			log.Println("Couldn't parse request")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		newComment := store.Comment{
-			Content:          strings.TrimSpace(r.FormValue("comment")),
-			Author:           username,
-			TimeOfSubmission: time.Now(),
-		}
-
-		err = p.database.MainPlaygroundStore.AddComment(ID, newComment)
-
-		if err != nil {
-			log.Printf("Problème à l'ajout du commentaire, %s", err)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
-	} else {
-		w.WriteHeader(http.StatusInternalServerError)
+func (p *PlaygroundServer) playgroundHandler(w http.ResponseWriter, r *http.Request) {
+	ID, err := extractParameterFromRequest(r, "ID")
+	if err != nil {
+		log.Println("Couldn't parse request parameter")
+		p.renderView(w, r, "internal error", nil)
+		return
 	}
-}
-func (p *PlaygroundServer) deleteComment(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value("claims").(*authentication.Claims)
-	if ok {
-		playgroundID, err := extractIDFromRequest(r, "ID")
-		if err != nil {
-			log.Println("Couldn't parse request parameter")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		commentID, err := extractIDFromRequest(r, "commentID")
-		if err != nil {
-			log.Println("Couldn't parse request parameter")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		err = p.database.MainPlaygroundStore.DeleteComment(playgroundID, commentID, claims.Username)
-		if err != nil {
-			log.Printf("Impossible de supprimer le commentaire, %s", err)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
-	} else {
-		w.WriteHeader(http.StatusInternalServerError)
+
+	playground := p.database.GetPlayground(ID)
+	if playground.Name == "" {
+		p.renderView(w, r, "404", nil)
+		return
 	}
+
+	comments := p.database.GetAllComments(ID)
+
+	type playgroundWithComments struct {
+		Playground
+		Comments
+	}
+
+	p.renderView(w, r, "playground", playgroundWithComments{
+		playground,
+		comments,
+	})
 }
 
-func (p *PlaygroundServer) modifyComment(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value("claims").(*authentication.Claims)
-	if ok {
-		playgroundID, err := extractIDFromRequest(r, "ID")
-		if err != nil {
-			log.Println("Couldn't parse request parameter")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		commentID, err := extractIDFromRequest(r, "commentID")
-		if err != nil {
-			log.Println("Couldn't parse request parameter")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		updatedComment, err := store.NewCommentFromJSON(r.Body)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		updatedComment.Content = strings.TrimSpace(updatedComment.Content)
-		updatedComment.TimeOfSubmission = time.Now()
-		updatedComment.ID = commentID
-		updatedComment.Author = claims.Username
+func (p *PlaygroundServer) loginHandler(w http.ResponseWriter, r *http.Request) {
+	p.renderView(w, r, "login", nil)
+}
 
-		err = p.database.MainPlaygroundStore.UpdateComment(playgroundID, updatedComment)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
-	} else {
-		w.WriteHeader(http.StatusInternalServerError)
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	authentication.UnsetJWTCookie(w)
+	http.Redirect(w, r, URLHome, http.StatusFound)
+}
+
+func (p *PlaygroundServer) submittedPlaygroundsHandler(w http.ResponseWriter, r *http.Request) {
+	p.renderView(w, r, "submittedPlaygrounds", p.database.GetAllSubmittedPlaygrounds())
+}
+
+func (p *PlaygroundServer) newSubmittedPlaygroundHandler(w http.ResponseWriter, r *http.Request) {
+	p.renderView(w, r, "submitPlayground", nil)
+}
+
+func (p *PlaygroundServer) submittedPlaygroundHandler(w http.ResponseWriter, r *http.Request) {
+	ID, err := extractParameterFromRequest(r, "ID")
+	if err != nil {
+		log.Println("Couldn't parse request parameter")
+		p.renderView(w, r, "internal error", nil)
+		return
 	}
+
+	playground := p.database.GetSubmittedPlayground(ID)
+	if playground.Name == "" {
+		p.renderView(w, r, "404", nil)
+		return
+	}
+
+	p.renderView(w, r, "submittedPlayground", playground)
 }
 
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -280,244 +208,6 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	authentication.SetJwtCookie(w, username)
 	http.Redirect(w, r, "/", http.StatusFound)
-}
-
-func serveSW(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "sw.js")
-}
-
-func (p *PlaygroundServer) homeHandler(w http.ResponseWriter, r *http.Request) {
-	p.renderView(w, r, "home", nil)
-}
-
-func (p *PlaygroundServer) playgroundsHandler(w http.ResponseWriter, r *http.Request) {
-	p.renderView(w, r, "playgrounds", p.database.MainPlaygroundStore.AllPlaygrounds())
-}
-
-func (p *PlaygroundServer) submittedPlaygroundsHandler(w http.ResponseWriter, r *http.Request) {
-	p.renderView(w, r, "submittedPlaygrounds", p.database.SubmittedPlaygroundStore.AllPlaygrounds())
-}
-
-func (p *PlaygroundServer) submitPlaygroundHandler(w http.ResponseWriter, r *http.Request) {
-	p.renderView(w, r, "submitPlayground", nil)
-}
-
-func (p *PlaygroundServer) submittedPlaygroundHandler(w http.ResponseWriter, r *http.Request) {
-	ID, err := extractIDFromRequest(r, "ID")
-	if err != nil {
-		log.Println("Couldn't parse request parameter")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	playground, err := p.database.SubmittedPlaygroundStore.Playground(ID)
-	switch err {
-	case store.ErrorNotFoundPlayground:
-		p.renderView(w, r, "404", nil)
-	case nil:
-		p.renderView(w, r, "submittedPlayground", playground)
-	default:
-		p.renderView(w, r, "internal error", nil)
-	}
-}
-
-func (p *PlaygroundServer) playgroundHandler(w http.ResponseWriter, r *http.Request) {
-	playground, err := p.findPlaygroundFromRequestParameter(w, r)
-	switch err {
-	case store.ErrorNotFoundPlayground:
-		p.renderView(w, r, "404", nil)
-	case nil:
-		p.renderView(w, r, "playground", playground)
-	default:
-		p.renderView(w, r, "internal error", nil)
-	}
-}
-
-func (p *PlaygroundServer) loginHandler(w http.ResponseWriter, r *http.Request) {
-	p.renderView(w, r, "login", nil)
-}
-
-func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	authentication.UnsetJWTCookie(w)
-	http.Redirect(w, r, URLHome, http.StatusFound)
-}
-
-func (p *PlaygroundServer) getAllPlaygrounds(w http.ResponseWriter, r *http.Request) {
-	err := encodeToJson(w, p.database.MainPlaygroundStore.AllPlaygrounds())
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-}
-
-func (p *PlaygroundServer) getAllSubmittedPlaygrounds(w http.ResponseWriter, r *http.Request) {
-	err := encodeToJson(w, p.database.SubmittedPlaygroundStore.AllPlaygrounds())
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-}
-
-func (p *PlaygroundServer) getPlayground(w http.ResponseWriter, r *http.Request) {
-	if playground, err := p.findPlaygroundFromRequestParameter(w, r); err == nil {
-		err = encodeToJson(w, playground)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-}
-
-func (p *PlaygroundServer) getNearestPlaygrounds(w http.ResponseWriter, r *http.Request) {
-	address, err := extractAddressFromRequest(r)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	nearestPlaygrounds, err := p.database.MainPlaygroundStore.AllPlaygrounds().FindNearestPlaygrounds(p.apiClient, address)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if len(nearestPlaygrounds) > 10 {
-		nearestPlaygrounds = nearestPlaygrounds[:10]
-	}
-	err = encodeToJson(w, nearestPlaygrounds)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-}
-
-func (p *PlaygroundServer) deleteSubmittedPlayground(w http.ResponseWriter, r *http.Request) {
-	ID, err := extractIDFromRequest(r, "ID")
-
-	if err != nil {
-		log.Println("Couldn't parse request parameter")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	p.database.SubmittedPlaygroundStore.DeletePlayground(ID)
-
-	w.WriteHeader(http.StatusAccepted)
-}
-
-func (p *PlaygroundServer) addPlayground(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	formValues := make(map[string]string)
-	for key, field := range r.Form {
-		if value := strings.TrimSpace(strings.Join(field, "")); value != "" {
-			formValues[key] = value
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-	}
-
-	submittedPlaygroundID, err := strconv.Atoi(formValues["ID"])
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	submittedPlayground, err := p.database.SubmittedPlaygroundStore.Playground(submittedPlaygroundID)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	longitude, err := strconv.ParseFloat(formValues["longitude"], 64)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	latitude, err := strconv.ParseFloat(formValues["latitude"], 64)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	newPlayground := store.Playground{
-		Name:             submittedPlayground.Name,
-		Address:          formValues["address"],
-		PostalCode:       formValues["postal_code"],
-		City:             formValues["city"],
-		Department:       formValues["department"],
-		Long:             longitude,
-		Lat:              latitude,
-		Coating:          formValues["coating"],
-		Type:             formValues["type"],
-		Author:           submittedPlayground.Author,
-		TimeOfSubmission: submittedPlayground.TimeOfSubmission,
-	}
-
-	if formValues["open"] == "" {
-		newPlayground.Open = true
-	}
-
-	errorsMap := p.database.AddPlayground(newPlayground, submittedPlaygroundID)
-	if len(errorsMap) > 0 {
-		log.Println(errorsMap)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	w.WriteHeader(http.StatusAccepted)
-}
-
-func (p *PlaygroundServer) submitPlayground(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value("claims").(*authentication.Claims)
-	if ok {
-		username := claims.Username
-		r.ParseForm()
-		formValues := make(map[string]string)
-		for key, field := range r.Form {
-			if value := strings.TrimSpace(strings.Join(field, "")); value != "" {
-				formValues[key] = value
-			} else {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-		}
-
-		newPlayground := store.Playground{
-			Name:             formValues["name"],
-			Address:          formValues["address"],
-			PostalCode:       formValues["postal_code"],
-			City:             formValues["city"],
-			Department:       formValues["department"],
-			Author:           username,
-			TimeOfSubmission: time.Now(),
-		}
-
-		errorsMap := p.database.SubmitPlayground(newPlayground)
-		if len(errorsMap) > 0 {
-			log.Println(errorsMap)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
-	} else {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-}
-
-func extractAddressFromRequest(r *http.Request) (string, error) {
-	queryStrings := r.URL.Query()
-	address, ok := queryStrings["address"]
-	if !ok {
-		return "", fmt.Errorf("No address paramater in request, %s", r.URL.String())
-	}
-	if address[0] == "" {
-		return "", fmt.Errorf("Address paramater is empty, %s", r.URL.String())
-	}
-	return address[0], nil
-}
-
-func extractIDFromRequest(r *http.Request, parameter string) (int, error) {
-	vars := mux.Vars(r)
-	ID, err := strconv.Atoi(vars[parameter])
-	if err != nil {
-		log.Println(err)
-		return 0, fmt.Errorf("Couldn't get id from request, %s", r.URL.String())
-	}
-	return ID, nil
 }
 
 func encodeToJson(w http.ResponseWriter, data interface{}) error {
@@ -550,28 +240,54 @@ func (p *PlaygroundServer) renderView(w http.ResponseWriter, r *http.Request, te
 	}
 
 	if view, ok := p.views[template]; ok {
-		w.Header().Set("Content-Type", HtmlContentType)
-		w.Header().Set("Accept-Encoding", GzipAcceptEncoding)
 		err := view.Render(w, r, renderingData)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 		return
 	}
 	w.WriteHeader(http.StatusInternalServerError)
+	return
 }
 
-func (p *PlaygroundServer) findPlaygroundFromRequestParameter(w http.ResponseWriter, r *http.Request) (store.Playground, error) {
-	ID, err := extractIDFromRequest(r, "ID")
+func extractParameterFromRequest(r *http.Request, parameter string) (int, error) {
+	vars := mux.Vars(r)
+	param, err := strconv.Atoi(vars[parameter])
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return store.Playground{}, errors.New("Couldn't parse request parameter")
+		log.Println(err)
+		return 0, fmt.Errorf("Couldn't get parameter %q from request, %s", parameter, r.URL.String())
 	}
-	playground, err := p.database.MainPlaygroundStore.Playground(ID)
+	return param, nil
+}
+
+func (p Playgrounds) SortByName() {
+	sort.Slice(p, func(i, j int) bool {
+		return strings.ToLower(p[i].Name) < strings.ToLower(p[j].Name)
+	})
+}
+
+func (p Playgrounds) sortByProximity(long, lat float64) Playgrounds {
+	playgroundsSorted := make(Playgrounds, len(p))
+	copy(playgroundsSorted, p)
+	sort.SliceStable(playgroundsSorted, func(i, j int) bool {
+		distanceFromAddressToI := playgroundsSorted[i].calculateSquaredDistanceFrom(long, lat)
+		distanceFromAddressToJ := playgroundsSorted[j].calculateSquaredDistanceFrom(long, lat)
+		return distanceFromAddressToI < distanceFromAddressToJ
+	})
+	return playgroundsSorted
+}
+
+func (p Playground) calculateSquaredDistanceFrom(long, lat float64) float64 {
+	return math.Pow(long-p.Long, 2) + math.Pow(lat-p.Lat, 2)
+}
+
+func (p Playgrounds) FindNearestPlaygrounds(client GeolocationClient, address string) (Playgrounds, error) {
+	long, lat, err := client.GetLongAndLat(address)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return store.Playground{}, store.ErrorNotFoundPlayground
+		return nil, fmt.Errorf("Couldn't get longitude and lattitude, %s", err)
 	}
-	return playground, nil
+	playgroundsSorted := p.sortByProximity(long, lat)
+	return playgroundsSorted, nil
 }

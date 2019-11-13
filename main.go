@@ -7,15 +7,13 @@ import (
 	"path/filepath"
 
 	"github.com/yousseffarkhani/playground/backend2/authentication"
-
-	"github.com/yousseffarkhani/playground/backend2/configuration"
+	"github.com/yousseffarkhani/playground/backend2/geolocationClient"
+	"github.com/yousseffarkhani/playground/backend2/middleware"
+	"github.com/yousseffarkhani/playground/backend2/psql"
 	"github.com/yousseffarkhani/playground/backend2/views"
 
-	"github.com/yousseffarkhani/playground/backend2/geolocationClient"
+	"github.com/yousseffarkhani/playground/backend2/configuration"
 
-	"github.com/yousseffarkhani/playground/backend2/store"
-
-	"github.com/yousseffarkhani/playground/backend2/middleware"
 	"github.com/yousseffarkhani/playground/backend2/server"
 )
 
@@ -29,7 +27,7 @@ func init() {
 }
 
 func main() {
-	database, err := store.NewFromFile(dbFileName)
+	database, err := psql.NewPlaygroundDatabaseFromFilepath(dbFileName)
 	if err != nil {
 		log.Fatalf("Problem opening %s %v", dbFileName, err)
 	}

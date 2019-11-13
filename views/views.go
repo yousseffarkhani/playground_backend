@@ -1,7 +1,6 @@
 package views
 
 import (
-	"io"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -53,7 +52,10 @@ func layoutFiles() []string {
 	return files
 }
 
-func (v *View) Render(w io.Writer, r *http.Request, data server.RenderingData) error {
+func (v *View) Render(w http.ResponseWriter, r *http.Request, data server.RenderingData) error {
+	w.Header().Set("Content-Type", server.HtmlContentType)
+	w.Header().Set("Accept-Encoding", server.GzipAcceptEncoding)
+	w.WriteHeader(http.StatusOK)
 	err := v.template.ExecuteTemplate(w, v.Layout, data)
 	return err
 }

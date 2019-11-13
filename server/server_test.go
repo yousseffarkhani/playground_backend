@@ -111,14 +111,9 @@ func TestAPIs(t *testing.T) {
 
 	t.Run("Playground APIs : ", func(t *testing.T) {
 		t.Run(server.APIPlaygrounds, func(t *testing.T) {
-			cases := []string{
-				server.APIPlaygrounds,
-				server.APIPlaygrounds + "/",
-			}
-			for _, c := range cases {
-				t.Run(fmt.Sprintf("Get request to %s", c), func(t *testing.T) {
+				t.Run(fmt.Sprintf("Get request to %s", server.APIPlaygrounds), func(t *testing.T) {
 					// Act
-					req := test.NewGetRequest(t, c)
+					req := test.NewGetRequest(t, server.APIPlaygrounds)
 					res := httptest.NewRecorder()
 					svr.ServeHTTP(res, req)
 
@@ -140,8 +135,7 @@ func TestAPIs(t *testing.T) {
 
 						test.AssertPlaygrounds(t, got, playgrounds)
 					})
-				})
-			}
+			})
 		})
 		t.Run(server.APIPlayground, func(t *testing.T) {
 			t.Run("GET", func(t *testing.T) {
@@ -388,7 +382,7 @@ func TestAPIs(t *testing.T) {
 								assertHeader(t, res, "Accept-Encoding", server.GzipAcceptEncoding)
 							})
 							t.Run("returns a comment", func(t *testing.T) {
-								got, err := store.NewCommentFromJSON(res.Body)
+								got, err := NewCommentFromJSON(res.Body)
 								if err != nil {
 									t.Fatalf("Unable to parse input %q into comment, '%v'", res.Body, err)
 								}
@@ -449,7 +443,7 @@ func TestAPIs(t *testing.T) {
 						req = test.NewGetRequest(t, "/api/playgrounds/1/comments/3")
 						res = httptest.NewRecorder()
 						svr.ServeHTTP(res, req)
-						got, err := store.NewCommentFromJSON(res.Body)
+						got, err := NewCommentFromJSON(res.Body)
 						if err != nil {
 							t.Fatalf("Unable to parse input %q into comment, '%v'", res.Body, err)
 						}
@@ -551,7 +545,7 @@ func TestAPIs(t *testing.T) {
 						res = httptest.NewRecorder()
 						svr.ServeHTTP(res, req)
 
-						got, err := store.NewCommentFromJSON(res.Body)
+						got, err := NewCommentFromJSON(res.Body)
 						if err != nil {
 							t.Fatalf("Unable to parse input %q into comment, '%v'", res.Body, err)
 						}
@@ -594,6 +588,8 @@ func TestAPIs(t *testing.T) {
 		})
 	})
 }
+
+
 
 func (m *mockPlaygroundStore) UpdateComment(playgroundID int, updatedComment store.Comment) error {
 	_, index, err := m.playgrounds.Find(playgroundID)

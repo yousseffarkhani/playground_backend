@@ -65,14 +65,11 @@
 </div>
 <script>
     const resultDiv = document.querySelector("#result")
-
     const commentForm = document.getElementById("commentForm");
     commentForm.addEventListener("submit", function (e) {
         e.preventDefault()
-
         const formData = new FormData(this)
         const searchParams = new URLSearchParams()
-
         for (const pair of formData) {
             searchParams.append(pair[0], pair[1]);
         }
@@ -121,7 +118,6 @@
                 <button type="button" class="btn btn-primary btn-sm" onclick="updateComment(${ID})">Valider</button>
                 <button type="button" class="btn btn-danger btn-sm" onclick="cancelUpdateComment(${ID},'${content.innerText}')">Annuler</button>`;
     }
-
     function cancelUpdateComment(ID, content) {
         const comment = document.querySelector(`#comment-${ID}`);
         comment.innerHTML = `
@@ -129,7 +125,6 @@
             <button type="button" class="btn btn-primary btn-sm" onclick="replaceCommentDiv(${ID})">Modifier</button>
             <button type="button" class="btn btn-danger btn-sm" onclick="deleteComment(${ID})">Supprimer</button>`;
     }
-
     function updateComment(ID) {
         const input = document.querySelector(`#content-${ID}`)
         fetch(`/api/playgrounds/{{$.Data.ID}}/comments/${ID}`, {
@@ -147,7 +142,6 @@
             }
         })
     }
-
     function deleteComment(commentID) {
         fetch(`/api/playgrounds/{{$.Data.ID}}/comments/${commentID}`, {
             method: "DELETE"
@@ -177,9 +171,9 @@
 
         marker.setMap(map);
         var infowindowContent = `
-            <h5>{{ .Data.Name }}</h5>
-            <p>{{ .Data.Address }}, {{ .Data.PostalCode }} {{ .Data.City }}</p>
-            `
+<h5>{{ .Data.Name }}</h5>
+<p>{{ .Data.Address }}, {{ .Data.PostalCode }} {{ .Data.City }}</p>
+`
         var infowindow = new google.maps.InfoWindow({
             content: infowindowContent
         });
