@@ -11,6 +11,25 @@ La partie back-end va se charger de stocker les terrains et de les envoyer au fo
     - Mettre en oeuvre les connaissances apprises en NodeJS, docker, HTML et CSS.
     - Réaliser un site utile à terme :-)
 
+# Déploiement
+
+## Docker-compose
+1. Modifier le host (store.go) à dockerDB (nom donné dans le fichier docker-compose.yml)
+1. Construire et lancer les containers : `docker-compose up --build`
+
+## Docker + Go
+1. Lancer le container PostgreSQL : `docker run --rm --name dockerDB -e POSTGRES_PASSWORD=secret -d -p 5432:5432 postgres`
+1. Modifier le host (store.go) à localhost
+1. Build le projet et lancer l'application : `go build && ./playground_backend`
+
+## Docker
+1. Créer un network : `docker network create mynet`
+1. Lancer le container PostgreSQL : `docker run --rm --net mynet  --name dockerDB -e POSTGRES_PASSWORD=secret -d -p 5432:5432 postgres`
+1. Modifier le host (store.go) à dockerDB (nom donné au container PostgreSQL)
+1. Construire le container de l'application : `docker build -t playground .`
+1. Lancer le container de l'application : `docker run -it --rm --net mynet --name playground_app -p 5000:5000 playground`
+
+
 # Fonctionnalités (par ordre de priorité)
 - ~~Afficher l'ensemble des terrains de basket parisien~~
     - Back-end :

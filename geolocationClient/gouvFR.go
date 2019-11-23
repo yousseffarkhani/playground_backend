@@ -3,6 +3,7 @@ package geolocationClient
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -25,6 +26,7 @@ func (a APIGouvFR) GetLongAndLat(address string) (float64, float64, error) {
 
 	resp, err := http.Get(fmt.Sprintf("%s%s%s", a.ApiBase, formattedAddress, a.ApiSuffix))
 	if err != nil {
+		log.Println(err)
 		return 0, 0, fmt.Errorf("Couldn't get info, %s", err)
 	}
 

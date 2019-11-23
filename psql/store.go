@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/yousseffarkhani/playground/backend2/configuration"
 	"github.com/yousseffarkhani/playground/backend2/server"
 
 	"github.com/jinzhu/gorm"
@@ -23,26 +24,18 @@ var (
 	driverName = "postgres"
 	host       = "localhost"
 	port       = "5432"
-	user       = "postgres"
-	password   = "docker"
+	user       string
+	password   string
 	dbname     = "basket"
 )
-
-// docker run --rm --name psql-docker -e POSTGRES_PASSWORD=docker -d -p 5432:5432 postgres
-// var (
-// 	driverName = "postgres"
-// 	host       = "db"
-// 	port       = "5432"
-// 	user       = os.Getenv("POSTGRES_USER")
-// 	password   = os.Getenv("POSTGRES_PASSWORD")
-// 	dbname     = "Playground"
-// )
 
 type playgroundDatabase struct {
 	*gorm.DB
 }
 
 func ExistingDatabase() (server.Database, error) {
+	user = configuration.Variables.DBUser
+	password = configuration.Variables.DBPassword
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable dbname=%s", host, port, user, password, dbname)
 	gormDB, err := gorm.Open(driverName, psqlInfo)
 	if err != nil {

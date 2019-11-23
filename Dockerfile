@@ -1,19 +1,16 @@
-# FROM golang AS builder
-FROM golang
+FROM golang AS builder
 
 WORKDIR /go/src/github.com/yousseffarkhani/playground/backend2
 ADD . .
 
 # Downloads all dependecies
 RUN go get ./
-# Single staged
-RUN go install
+RUN CGO_ENABLED=0 GOOS=linux go build -o backend2
 
-CMD backend2
+FROM alpine:latest AS production
 
-# Multi staged not working properly
-# RUN CGO_ENABLED=0 GOOS=linux go build -o playground
+RUN apk --no-cache add ca-certificates
 
-# FROM alpine:latest AS production
-# COPY --from=builder /go/src/github.com/yousseffarkhani/playground/backend2 .
-# CMD ["./playground"]
+COPY --from=builder /go/src/github.com/yousseffarkhani/playground/backend2 .
+
+CMD ["./backend2"]

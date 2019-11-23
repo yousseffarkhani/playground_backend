@@ -20,6 +20,8 @@ type configVariables struct {
 	SESSION_SECRET           string
 	GOOGLE_MAPS_API_KEY      string
 	GOOGLE_GEOCODING_API_KEY string
+	DBUser                   string
+	DBPassword               string
 }
 
 type TLS struct {
@@ -59,6 +61,8 @@ func LoadEnvVariables() {
 		SESSION_SECRET:           os.Getenv("SESSION_SECRET"),
 		GOOGLE_MAPS_API_KEY:      os.Getenv("GOOGLE_MAPS_API_KEY"),
 		GOOGLE_GEOCODING_API_KEY: os.Getenv("GOOGLE_GEOCODING_API_KEY"),
+		DBUser:                   os.Getenv("POSTGRES_USER"),
+		DBPassword:               os.Getenv("POSTGRES_PASSWORD"),
 	}
 }
 
