@@ -5,7 +5,6 @@ const staticAssets = [
     '../css/bootstrap.min.css',
 ];
 
-console.log("hello from sw.js")
 self.addEventListener('install', async e => {
     // const cache = await caches.open(cacheName);
     // await cache.addAll(staticAssets);

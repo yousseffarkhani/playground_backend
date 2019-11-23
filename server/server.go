@@ -45,6 +45,7 @@ type Database interface {
 }
 
 type PlaygroundStore interface {
+	GetLastPlaygroundID() int
 	GetAllPlaygrounds() Playgrounds
 	GetPlayground(ID int) Playground
 	AddPlayground(newPlayground Playground) error
@@ -58,11 +59,12 @@ type SubmittedPlaygroundStore interface {
 }
 
 type CommentStore interface {
+	GetLastCommentID() int
 	GetAllComments(playgroundID int) Comments
 	GetComment(playgroundID, commentID int) Comment
 	AddComment(playgroundID int, newComment Comment) error
 	DeleteComment(playgroundID, commentID int) error
-	ModifyComment(playgroundID, commentID int, updatedComment Comment) error
+	ModifyComment(updatedComment Comment) error
 }
 
 type Playground struct {

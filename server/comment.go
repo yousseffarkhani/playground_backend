@@ -61,13 +61,12 @@ func (p *PlaygroundServer) addCommentHandler(w http.ResponseWriter, r *http.Requ
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-
 		if content := strings.TrimSpace(r.FormValue("comment")); content != "" {
 			newComment := Comment{
 				PlaygroundID:     playgroundID,
 				Content:          content,
 				Author:           username,
-				ID:               len(p.database.GetAllComments(playgroundID)) + 1,
+				ID:               p.database.GetLastCommentID() + 1,
 				TimeOfSubmission: time.Now(),
 			}
 
@@ -79,7 +78,6 @@ func (p *PlaygroundServer) addCommentHandler(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		w.WriteHeader(http.StatusBadRequest)
-		return
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -134,39 +132,41 @@ func (p *PlaygroundServer) modifyCommentHandler(w http.ResponseWriter, r *http.R
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
+		comment := p.database.GetComment(playgroundID, commentID)
+		if comment.Content == "" {
+			log.Println("Comment doesn't exist")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if comment.Author != claims.Username {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
 		updatedComment, err := NewCommentFromJSON(r.Body)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		updatedComment.Content = strings.TrimSpace(updatedComment.Content)
-		updatedComment.TimeOfSubmission = time.Now()
-		updatedComment.ID = commentID
-		updatedComment.Author = claims.Username
-		// func (p *Playground) UpdateComment(updatedComment Comment) error {
-		// 	for index, comment := range p.Comments {
-		// 		if comment.ID == updatedComment.ID {
-		// 			if comment.Author != updatedComment.Author {
-		// 				return errors.New("Not the same author")
-		// 			}
-		// 			content := strings.TrimSpace(updatedComment.Content)
-		// 			if content == "" {
-		// 				return ErrEmptyField
-		// 			}
-		// 			p.Comments[index].Content = content
-		// 			p.Comments[index].TimeOfSubmission = updatedComment.TimeOfSubmission
-		// 			return nil
-		// 		}
-		// 	}
-		// 	return errors.New("Couldn't find comment")
-		// }
-		err = p.database.ModifyComment(playgroundID, commentID, updatedComment)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+
+		if content := strings.TrimSpace(updatedComment.Content); content != "" {
+			updatedComment.Content = content
+			updatedComment.TimeOfSubmission = time.Now()
+			updatedComment.ID = commentID
+			updatedComment.Author = claims.Username
+			updatedComment.PlaygroundID = playgroundID
+
+			err = p.database.ModifyComment(updatedComment)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			w.WriteHeader(http.StatusAccepted)
 			return
 		}
-		w.WriteHeader(http.StatusAccepted)
+		w.WriteHeader(http.StatusBadRequest)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 	}

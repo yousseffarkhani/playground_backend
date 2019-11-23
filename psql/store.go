@@ -28,6 +28,7 @@ var (
 	dbname     = "basket"
 )
 
+// docker run --rm --name psql-docker -e POSTGRES_PASSWORD=docker -d -p 5432:5432 postgres
 // var (
 // 	driverName = "postgres"
 // 	host       = "db"
@@ -41,12 +42,21 @@ type playgroundDatabase struct {
 	*gorm.DB
 }
 
+func ExistingDatabase() (server.Database, error) {
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable dbname=%s", host, port, user, password, dbname)
+	gormDB, err := gorm.Open(driverName, psqlInfo)
+	if err != nil {
+		return nil, err
+	}
+	db := &playgroundDatabase{gormDB}
+	return db, nil
+}
+
 func NewPlaygroundDatabaseFromFilepath(path string) (server.Database, error) {
 	gormDB, err := initializeDB()
 	if err != nil {
 		return nil, fmt.Errorf("Problem initializing DB, %s", err)
 	}
-
 	db := &playgroundDatabase{gormDB}
 
 	file, err := openPlaygroundsFile(path)
@@ -87,12 +97,16 @@ func (db *playgroundDatabase) initData(file *os.File) error {
 
 func initializeDB() (*gorm.DB, error) {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable", host, port, user, password)
-	err := reset(driverName, psqlInfo, dbname)
+	db, err := gorm.Open(driverName, psqlInfo)
+	if err != nil {
+		return nil, err
+	}
+	err = reset(driverName, psqlInfo, dbname)
 	if err != nil {
 		return nil, err
 	}
 	psqlInfo = fmt.Sprintf("%s dbname=%s", psqlInfo, dbname)
-	db, err := gorm.Open(driverName, psqlInfo)
+	db, err = gorm.Open(driverName, psqlInfo)
 	if err != nil {
 		return nil, err
 	}

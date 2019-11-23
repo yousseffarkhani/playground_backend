@@ -27,9 +27,13 @@ func init() {
 }
 
 func main() {
-	database, err := psql.NewPlaygroundDatabaseFromFilepath(dbFileName)
-	if err != nil {
-		log.Fatalf("Problem opening %s %v", dbFileName, err)
+	var database server.Database
+	var err error
+	if database, err = psql.ExistingDatabase(); err != nil {
+		database, err = psql.NewPlaygroundDatabaseFromFilepath(dbFileName)
+		if err != nil {
+			log.Fatalf("Problem opening %s %v", dbFileName, err)
+		}
 	}
 	geolocationClient := &geolocationClient.APIGouvFR{}
 	views := views.Initialize()

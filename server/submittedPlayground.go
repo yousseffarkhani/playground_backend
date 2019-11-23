@@ -33,9 +33,15 @@ func (p *PlaygroundServer) submitPlaygroundHandler(w http.ResponseWriter, r *htt
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 
-		newPlayground.ID = len(p.database.GetAllPlaygrounds()) + 1
+		newPlayground.ID = p.database.GetLastPlaygroundID() + 1
 
 		if isNameOrAddressAlreadyExisting(newPlayground, p.database.GetAllSubmittedPlaygrounds()) {
+			fmt.Println("Ce terrain existe ,", newPlayground.Name, newPlayground.Address)
+			for _, playground := range p.database.GetAllSubmittedPlaygrounds() {
+				if playground.Address == newPlayground.Address {
+					fmt.Println("Ce terrain existe ???")
+				}
+			}
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

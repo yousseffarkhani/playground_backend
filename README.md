@@ -111,8 +111,7 @@ Pour cela, les données ont été récupérées depuis plusieurs sources (Open d
 Il est possible de créer un compte permettant de commenter les terrains et d'en soumettre de nouveaux.
 
 # TODO
-
-- Séparer server en plusieurs fichiers
+- Charger les terrains au fur et à mesure que l'utilisateur scroll
 - Rediriger vers la page précédente après s'être loggé
 - Refaire le système d'ID sinon il y a une possibilité d'effacement de playground (prendre l'ID du dernier élément et l'incrémenter)
 - Refactorer store.go

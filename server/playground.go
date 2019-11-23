@@ -13,7 +13,6 @@ var ErrEmptyField = errors.New("Empty field")
 
 func (p *PlaygroundServer) getAllPlaygroundsHandler(w http.ResponseWriter, r *http.Request) {
 	playgrounds := p.database.GetAllPlaygrounds()
-	playgrounds.SortByName()
 	err := encodeToJson(w, playgrounds)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

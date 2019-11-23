@@ -21,6 +21,7 @@ func NewPlaygroundsFromJSON(input io.Reader) (server.Playgrounds, error) {
 func (db *playgroundDatabase) GetAllPlaygrounds() server.Playgrounds {
 	var playgrounds server.Playgrounds
 	db.Where("draft=?", false).Find(&playgrounds)
+	playgrounds.SortByName()
 	return playgrounds
 }
 
@@ -45,4 +46,12 @@ func (db *playgroundDatabase) GetPlaygroundByName(name string) (server.Playgroun
 		return server.Playground{}, ErrorNotFoundPlayground
 	}
 	return playground, nil
+}
+
+func (db *playgroundDatabase) GetLastPlaygroundID() int {
+	var max float64
+	row := db.Table("playgrounds").Select("max(id)").Row()
+	row.Scan(&max)
+	fmt.Println("MAX IS ", max)
+	return int(max)
 }
